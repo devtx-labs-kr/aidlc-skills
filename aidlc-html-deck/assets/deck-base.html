@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DECK TITLE — AI-DLC</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   Working skeleton for an AI-DLC HTML deck. Copy this file, then replace the
+   three sample sections. Reference implementation at full scale:
+   aidlc-v2/aidlc-v2.html (67 sections).
+
+   FLOW MODEL — not a slide box.
+   Each section is `min-height:100vh` and grows with its content in normal
+   document flow. Short sections centre in the viewport, so there is no dead
+   band under the last card; long ones get taller and the arrow key pages down
+   inside them before advancing. Nothing is scaled to a fixed canvas on screen,
+   so a projector of any aspect gets a full-bleed page.
+
+   NO PDF (2026-08-22). 발표와 배포 모두 브라우저에서 이 파일로 한다. `@page`·
+   `@media print`·16:9 페이지·본문 높이 예산은 없다 — 그래서 클릭 explorer 나
+   `<details>` 처럼 화면에서만 되는 장치를 마음껏 써도 된다. 다만 한 장이 한
+   화면을 넘으면 방향키가 그 장 안에서 먼저 스크롤하므로, "1회 = 1장" 감각을
+   지키려면 한 화면에 맞추는 게 좋다. Size type with clamp() and check BOTH a
+   1440 laptop and a 1920 projector: `vw` differs between them.
+
+   For a precisely-plotted diagram, prefer fluid columns (`minmax(0,1fr)`) over a
+   fixed canvas so it survives a narrow window.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@500;600;700&display=swap');
+
+:root{
+  --sans:'Pretendard',system-ui,-apple-system,'Segoe UI',sans-serif;
+  /* Pretendard sits inside the mono chain on purpose. Geist Mono has neither
+     hangul, `→`, nor hanja; without this those glyphs fall through to Menlo /
+     .SFNS / AppleSDGothicNeo. With it, a mono label renders Latin and digits in
+     Geist Mono and hangul in Pretendard — the mix we want. */
+  --mono:'Geist Mono','SF Mono','Pretendard',ui-monospace,monospace;
+
+  --paper:#FBFBF9; --sheet:#FFFFFF; --sunk:#F5F4F1; --rule:#E7E5E0;
+  --ink:#191A1C; --ink-2:#4C4E52; --ink-3:#686A6F; --ink-4:#8A8C91;
+
+  /* The AI-DLC semantic triad — who is acting. Never use these decoratively. */
+  --human-fill:#D7FBE5;  --human-ink:#12813C;  --human-line:#96E4B4;  --human-solid:#17B457;
+  --agent-fill:#E2ECFF;  --agent-ink:#1E4FD8;  --agent-line:#AEC7FB;  --agent-solid:#2F6BF6;
+  --engine-fill:#ECEBF4; --engine-ink:#575569; --engine-line:#D2CFE0; --engine-solid:#837FA0;
+  --warn-fill:#FFEAD3;   --warn-ink:#C2410C;   --warn-line:#FBCB98;   --warn-solid:#F97316;
+
+  --violet:#7C3AED; --pink:#EC4899; --teal:#0EA5A5;
+  --shadow:0 1px 1px rgba(24,26,28,.03),0 4px 12px rgba(24,26,28,.045),0 18px 44px rgba(24,26,28,.055);
+  --ease:cubic-bezier(.32,.72,0,1);
+  --navw:250px;                      /* index rail width — 0 when hidden */
+}
+body.nonav{--navw:0px;}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+  word-break:keep-all;overflow-wrap:break-word;-webkit-font-smoothing:antialiased;}
+
+/* ═══ left index rail ═══════════════════════════════════════════════════════
+   Add this the moment a deck passes ~20 sections: arrow keys cannot cross a
+   long deck. The index is BUILT FROM THE DOM (group name out of each section's
+   `.foot > span:first-child`, label out of its `<h1>`) so it can never drift
+   out of sync. `i` toggles it; fullscreen drops it. */
+#snav{position:fixed;left:0;top:0;bottom:0;width:var(--navw);z-index:60;
+  background:var(--sunk);border-right:1px solid var(--rule);
+  overflow-y:auto;overscroll-behavior:contain;padding:20px 0 30px;scrollbar-width:thin;}
+body.nonav #snav{display:none;}
+.snav-brand{padding:0 17px 14px;border-bottom:1px solid var(--rule);}
+.snav-brand b{font-size:14.5px;font-weight:800;letter-spacing:-.02em;display:block;color:var(--ink);}
+.snav-brand span{font-family:var(--mono);font-size:9px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-4);display:block;margin-top:4px;}
+.snav-cat{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-4);padding:15px 17px 5px;}
+.snav-link{display:flex;gap:9px;align-items:baseline;padding:5px 17px;width:100%;
+  cursor:pointer;border:0;background:none;text-align:left;font-family:inherit;
+  color:var(--ink-2);transition:background .12s;}
+.snav-link .sn{font-family:var(--mono);font-size:9.5px;color:var(--ink-4);flex:none;min-width:17px;}
+.snav-link .lb{font-size:12.5px;line-height:1.38;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.snav-link:hover{background:#EBE9E5;}
+.snav-link.on{background:var(--agent-fill);color:var(--agent-ink);}
+.snav-link.on .sn{color:var(--agent-ink);}
+.snav-link.on .lb{font-weight:700;}
+.snav-hint{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-4);padding:18px 17px 0;border-top:1px solid var(--rule);margin-top:16px;}
+
+/* ── the paging container ─────────────────────────────────────────────────── */
+#deck{height:100vh;overflow-y:scroll;scroll-snap-type:y proximity;scrollbar-width:none;
+  margin-left:var(--navw);}
+#deck::-webkit-scrollbar{display:none;}
+.sec{min-height:100vh;scroll-snap-align:start;position:relative;
+  display:grid;align-content:center;padding:80px clamp(40px,5.6vw,132px) 104px;}
+.wrap{width:100%;max-width:1440px;margin:0 auto;}
+.sec + .sec:not(.nodiv)::before{content:"";position:absolute;left:0;right:0;top:0;
+  height:1px;background:var(--rule);}
+
+/* ═══ click-stepped reveal — OFF by default ═════════════════════════════════
+   A section shows whole and one arrow-press moves to the next. Only add
+   data-step when the ORDER OF ARRIVAL is itself the lesson; the runtime branch
+   below is inert for every section without it. */
+[data-step]{opacity:0;transform:translateY(10px);
+  transition:opacity .38s var(--ease),transform .38s var(--ease);}
+[data-step].shown{opacity:1;transform:none;}
+
+/* ── surfaces ─────────────────────────────────────────────────────────────── */
+.wash{position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(120% 90% at 6% 0%,   rgba(23,180,87,.10),  transparent 55%),
+    radial-gradient(100% 80% at 52% 4%,  rgba(47,107,246,.13), transparent 60%),
+    radial-gradient(110% 90% at 100% 0%, rgba(124,58,237,.13), transparent 58%),
+    radial-gradient(80% 70% at 80% 100%, rgba(249,115,22,.09), transparent 60%);}
+.wash.soft{opacity:.55;}
+.hair{position:absolute;left:0;right:0;bottom:0;height:2px;
+  background:linear-gradient(90deg,var(--agent-solid),var(--violet),var(--pink));}
+
+/* ── type ─────────────────────────────────────────────────────────────────── */
+.eyebrow{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-4);}
+.eyebrow.ko{font-family:var(--sans);font-size:13px;font-weight:700;letter-spacing:0;text-transform:none;}
+.cover-title{font-size:clamp(46px,5.2vw,78px);font-weight:800;letter-spacing:-.038em;line-height:1.08;}
+.s-title{font-size:clamp(34px,3.5vw,56px);font-weight:800;letter-spacing:-.032em;line-height:1.14;}
+.c-title{font-size:clamp(25px,2.3vw,40px);font-weight:800;letter-spacing:-.026em;line-height:1.22;}
+.sub{font-size:clamp(15px,1.2vw,21px);color:var(--ink-2);line-height:1.55;margin-top:11px;}
+.cap{font-size:clamp(13px,1vw,17px);color:var(--ink-3);line-height:1.5;}
+.mut{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-4);}
+b,strong{font-weight:700;color:var(--ink);}
+
+.foot{position:absolute;left:clamp(40px,5.6vw,132px);right:clamp(40px,5.6vw,132px);bottom:34px;
+  display:flex;align-items:baseline;gap:12px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--ink-4);}
+.foot .pg{margin-left:auto;}
+
+.tag{display:inline-flex;align-items:center;gap:9px;padding:6px 15px;border-radius:9999px;
+  background:var(--sunk);border:1px solid var(--rule);font-size:13px;font-weight:700;color:var(--ink-2);}
+.tag b{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--agent-ink);}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:9999px;
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;}
+.chip.a{background:var(--agent-fill);color:var(--agent-ink);border:1px solid var(--agent-line);}
+.chip.h{background:var(--human-fill);color:var(--human-ink);border:1px solid var(--human-line);}
+.chip.e{background:var(--engine-fill);color:var(--engine-ink);border:1px solid var(--engine-line);}
+.chip.w{background:var(--warn-fill);color:var(--warn-ink);border:1px solid var(--warn-line);}
+.chip.v{background:#F0E9FE;color:var(--violet);border:1px solid #D9C8FC;}
+
+/* ── blocks ───────────────────────────────────────────────────────────────── */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:clamp(14px,1.5vw,22px);}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;
+  padding:clamp(16px,1.6vw,24px) clamp(18px,1.8vw,26px);box-shadow:var(--shadow);position:relative;}
+.card .ct{font-size:clamp(17px,1.45vw,24px);font-weight:700;letter-spacing:-.01em;}
+.card .cs{font-size:clamp(13.5px,1.1vw,18px);color:var(--ink-2);line-height:1.55;margin-top:8px;}
+.card.top::before{content:"";position:absolute;left:-1px;right:-1px;top:-1px;height:3px;
+  border-radius:14px 14px 0 0;background:var(--acc,var(--agent-solid));}
+.card.sunk{background:var(--sunk);box-shadow:none;}
+
+.kv{display:flex;flex-direction:column;}
+.kv .r{display:flex;gap:14px;padding:10px 0;border-top:1px solid var(--rule);}
+.kv .r:first-child{border-top:0;padding-top:0;}
+.kv .k{flex:none;width:clamp(104px,9.5vw,140px);font-size:clamp(13px,1.05vw,17px);
+  font-weight:700;color:var(--ink);}
+.kv .v{font-size:clamp(13px,1.05vw,17px);color:var(--ink-2);line-height:1.5;}
+
+/* table-layout:fixed so the inline width hints on <th> actually hold */
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed;font-size:clamp(12.5px,1.02vw,15px);}
+.tbl th{background:var(--sunk);font-family:var(--mono);font-size:10.5px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);text-align:left;
+  padding:10px 14px;border-bottom:1px solid var(--rule);}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--rule);color:var(--ink-2);
+  vertical-align:top;line-height:1.5;}
+.tbl tr:last-child td{border-bottom:0;}
+.tbl td.axis{font-weight:700;color:var(--ink);}
+
+.band{border-radius:12px;background:var(--ink);color:#F2F1EE;
+  padding:clamp(12px,1.2vw,17px) clamp(18px,1.8vw,26px);
+  font-size:clamp(13.5px,1.12vw,18px);line-height:1.5;}
+.band b{color:#84B4FF;}
+.band.quiet{background:var(--sunk);color:var(--ink-2);border:1px solid var(--rule);}
+.band.quiet b{color:var(--agent-ink);}
+
+/* ▸ (U+25B8) is in neither Geist Mono nor Pretendard — drawn in CSS instead. */
+.tri{display:inline-block;width:0;height:0;border-left:5px solid currentColor;
+  border-top:3.5px solid transparent;border-bottom:3.5px solid transparent;
+  margin:0 6px 2px 0;vertical-align:middle;opacity:.75;}
+.up{text-align:center;color:var(--ink-4);font-size:15px;font-weight:700;}
+
+/* ── presenter chrome ─────────────────────────────────────────────────────── */
+.chrome{position:fixed;font-family:var(--mono);color:var(--ink-4);font-size:11px;z-index:50;}
+#bar{left:var(--navw);right:0;top:0;height:2px;background:rgba(24,26,28,.07);}
+#bar i{display:block;height:100%;background:var(--agent-solid);transform-origin:left;
+  transition:transform .35s var(--ease);}
+#hud{right:16px;top:14px;letter-spacing:.1em;}
+
+/* Presenting: fullscreen drops the rail so the slide gets the whole screen. */
+html:fullscreen{--navw:0px;}
+html:fullscreen #snav{display:none;}
+
+/* 인쇄 블록은 없다 — PDF 는 2026-08-22 에 폐지됐다. 되살리지 말 것(SKILL.md 참조).
+   움직임을 싫어하는 환경만 존중한다. */
+@media (prefers-reduced-motion:reduce){
+  [data-step]{opacity:1!important;transform:none!important;}
+}
+</style>
+</head>
+<body>
+
+<nav id="snav" aria-label="목차">
+  <div class="snav-brand">
+    <b>DECK TITLE</b>
+    <span>sections · deck</span>
+  </div>
+  <div id="snav-list"></div>
+  <div class="snav-hint">← → 이동 · i 목차 · f 전체화면 · s 노트</div>
+</nav>
+
+<main id="deck">
+
+<!-- ═════════════════════════════════════════════════════════════════════════
+     Sections go here. Each one needs:
+       · data-notes  — presenter prose (this is what the presenter reads)
+       · an <h1>     — also becomes its index-rail label
+       · a .foot with a group name in the FIRST span — becomes the rail's
+         category header, so keep it identical across a run of sections
+     `.nodiv` suppresses the hairline above a section (use on covers/dividers).
+     ═════════════════════════════════════════════════════════════════════════ -->
+
+<section class="sec nodiv" data-notes="표지. 오늘 다룰 범위를 한 문장으로 좁힌다.">
+  <div class="wash"></div>
+  <div class="wrap">
+    <div class="tag" style="background:var(--agent-fill);border-color:var(--agent-line);color:var(--agent-ink);">
+      <b>DECK</b> Subtitle
+    </div>
+    <h1 class="cover-title" style="margin-top:26px;">덱 제목<br><span style="color:var(--agent-ink);">두 번째 줄</span></h1>
+    <p class="sub" style="font-size:clamp(16px,1.35vw,20px);max-width:52em;margin-top:24px;">
+      한 문장으로 이 덱이 무엇을 하는지.
+    </p>
+  </div>
+  <div class="hair"></div>
+  <div class="foot"><span>Deck Name</span><span class="pg"></span></div>
+</section>
+
+<section class="sec nodiv" data-notes="섹션 구분장. 여기서 큰 흐름이 한 번 끊긴다.">
+  <div class="wash soft"></div>
+  <div class="wrap" style="display:flex;align-items:center;gap:clamp(28px,3.4vw,52px);">
+    <div>
+      <div class="eyebrow">Section 1 — of 3</div>
+      <div style="font-family:var(--mono);font-size:clamp(84px,8.6vw,132px);font-weight:800;
+                  line-height:.86;letter-spacing:-.05em;color:var(--violet);margin-top:16px;">1</div>
+      <div style="width:88px;height:3px;background:var(--violet);margin-top:18px;border-radius:2px;"></div>
+    </div>
+    <div>
+      <h1 class="s-title">섹션 제목</h1>
+      <p class="sub" style="max-width:34em;">이 섹션이 무엇을 다루는지 한 줄.</p>
+    </div>
+  </div>
+  <div class="hair"></div>
+  <div class="foot"><span>Deck Name · 섹션 1</span><span class="pg"></span></div>
+</section>
+
+<section class="sec" data-notes="본문 슬라이드. 카드·표·밴드는 처음부터 다 보인다 — data-step 을 붙이지 않는다.">
+  <div class="wrap">
+    <div class="tag"><b>1.1</b> 섹션 1</div>
+    <h1 class="c-title" style="margin-top:15px;">본문 슬라이드 제목</h1>
+    <p class="sub">한 줄 부제 — 이 장이 무엇을 말하는지.</p>
+
+    <div class="grid" style="margin-top:clamp(26px,2.8vw,40px);">
+      <div class="card top" style="grid-column:span 4;--acc:var(--human-solid);">
+        <span class="chip h">Human</span>
+        <div class="ct" style="margin-top:11px;">결정한다</div>
+        <div class="cs">색이 곧 주체다 — 장식으로 쓰지 않는다.</div>
+      </div>
+      <div class="card top" style="grid-column:span 4;--acc:var(--agent-solid);">
+        <span class="chip a">Agent</span>
+        <div class="ct" style="margin-top:11px;">수행한다</div>
+        <div class="cs">에이전트가 그 단계를 돌린다.</div>
+      </div>
+      <div class="card top" style="grid-column:span 4;--acc:var(--engine-solid);">
+        <span class="chip e">Engine</span>
+        <div class="ct" style="margin-top:11px;">기억한다</div>
+        <div class="cs">상태를 단계 사이에 보존한다.</div>
+      </div>
+    </div>
+    <div class="band" style="margin-top:clamp(16px,1.7vw,24px);">
+      한 장에 <b>한 가지</b> 논지.
+    </div>
+  </div>
+  <div class="foot"><span>Deck Name · 섹션 1</span><span class="pg"></span></div>
+</section>
+
+</main>
+<div class="chrome" id="bar"><i></i></div>
+<div class="chrome" id="hud"></div>
+
+<script>
+const deck = document.getElementById('deck');
+const secs = [...document.querySelectorAll('.sec')];
+const bar  = document.querySelector('#bar i');
+const hud  = document.getElementById('hud');
+let i = 0, step = 0, notesWin = null;
+
+secs.forEach((s, n) => {
+  const pg = s.querySelector('.foot .pg');
+  if (pg) pg.textContent = `${n + 1} / ${secs.length}`;
+});
+
+/* ── index rail, derived from the sections themselves ─────────────────────── */
+const navLinks = (() => {
+  const list = document.getElementById('snav-list');
+  if (!list) return [];
+  const frag = document.createDocumentFragment();
+  let lastGroup = null;
+  const links = [];
+
+  secs.forEach((s, n) => {
+    const group = (s.querySelector('.foot span')?.textContent || '').trim();
+    /* textContent swallows <br>, which would glue the two halves of a two-line
+       cover title together — swap the breaks for spaces first. */
+    const h1 = s.querySelector('h1');
+    let label = `Section ${n + 1}`;
+    if (h1) {
+      const c = h1.cloneNode(true);
+      c.querySelectorAll('br').forEach(br => br.replaceWith(' '));
+      label = c.textContent.replace(/\s+/g, ' ').trim();
+    }
+    if (group && group !== lastGroup) {
+      const cat = document.createElement('div');
+      cat.className = 'snav-cat';
+      cat.textContent = group;
+      frag.appendChild(cat);
+      lastGroup = group;
+    }
+    const b = document.createElement('button');
+    b.className = 'snav-link';
+    b.type = 'button';
+    b.innerHTML = '<span class="sn">' + (n + 1) + '</span><span class="lb"></span>';
+    b.querySelector('.lb').textContent = label;
+    b.addEventListener('click', () => go(n));
+    frag.appendChild(b);
+    links.push(b);
+  });
+
+  list.appendChild(frag);
+  return links;
+})();
+
+function paintNav(){
+  navLinks.forEach((b, n) => b.classList.toggle('on', n === i));
+  const on = navLinks[i];
+  if (on && !document.body.classList.contains('nonav')) {
+    const rail = document.getElementById('snav');
+    const r = on.getBoundingClientRect(), rr = rail.getBoundingClientRect();
+    if (r.top < rr.top + 40 || r.bottom > rr.bottom - 40) on.scrollIntoView({block:'center'});
+  }
+}
+
+/* Inert for every section that carries no data-step. */
+const maxStep = el => {
+  const n = [...el.querySelectorAll('[data-step]')].map(e => +e.dataset.step || 0);
+  return n.length ? Math.max(...n) : 0;
+};
+function applySteps(){
+  secs[i].querySelectorAll('[data-step]')
+         .forEach(e => e.classList.toggle('shown', (+e.dataset.step || 0) <= step));
+}
+
+function paint(){
+  const ms = maxStep(secs[i]);
+  hud.textContent = ms ? `${i + 1} / ${secs.length}  ·  step ${step} / ${ms}`
+                       : `${i + 1} / ${secs.length}`;
+  bar.style.transform = `scaleX(${(i + 1) / secs.length})`;
+  history.replaceState(null, '', ms ? '#' + (i + 1) + '.' + step : '#' + (i + 1));
+  paintNav();
+  pushNotes();
+}
+/* `#<section>.<step>` deep-links a reveal state, which is how a mid-sequence
+   click gets screenshotted (`deck_screens.py` takes `#N`). */
+function go(n, behavior = 'smooth', s = 0){
+  i = Math.max(0, Math.min(secs.length - 1, n));
+  step = Math.max(0, Math.min(maxStep(secs[i]), s));
+  applySteps();
+  secs[i].scrollIntoView({behavior, block:'start'});
+  paint();
+}
+
+/* One arrow-press = one section. Two exceptions, in order: a section with
+   reveal steps walks them first, and a section taller than the viewport pages
+   down inside itself so nothing is skipped. */
+function next(){
+  if (step < maxStep(secs[i])) { step++; applySteps(); paint(); return; }
+  const r = secs[i].getBoundingClientRect();
+  if (r.bottom > innerHeight + 8) { deck.scrollBy({top:innerHeight * .86, behavior:'smooth'}); return; }
+  go(i + 1);
+}
+function prev(){
+  if (step > 0) { step--; applySteps(); paint(); return; }
+  const r = secs[i].getBoundingClientRect();
+  if (r.top < -8) { deck.scrollBy({top:-innerHeight * .86, behavior:'smooth'}); return; }
+  go(i - 1);
+}
+
+/* Keep the counter honest when the deck is scrolled by hand. */
+let raf = 0;
+deck.addEventListener('scroll', () => {
+  if (raf) return;
+  raf = requestAnimationFrame(() => {
+    raf = 0;
+    let best = 0, bd = Infinity;
+    secs.forEach((s, n) => {
+      const d = Math.abs(s.getBoundingClientRect().top);
+      if (d < bd) { bd = d; best = n; }
+    });
+    if (best !== i) { i = best; step = 0; applySteps(); paint(); }
+  });
+}, {passive:true});
+
+/* Presenter notes ride in a popup — an inline panel would change the layout. */
+function toggleNotes(){
+  if (notesWin && !notesWin.closed) { notesWin.close(); notesWin = null; return; }
+  notesWin = open('', 'notes', 'width=560,height=560');
+  notesWin.document.write(
+    '<meta charset="utf-8"><title>Speaker notes</title><style>' +
+    'body{font:15px/1.7 -apple-system,system-ui,sans-serif;margin:0;padding:22px;' +
+    'background:#191B1E;color:#ECEDEF;word-break:keep-all;white-space:pre-wrap}' +
+    'b{font:600 11px/1 ui-monospace,monospace;letter-spacing:.12em;color:#84B4FF;' +
+    'display:block;margin-bottom:14px;text-transform:uppercase}</style><div id="n"></div>');
+  notesWin.document.close();
+  pushNotes();
+}
+function pushNotes(){
+  if (!notesWin || notesWin.closed) return;
+  const box = notesWin.document.getElementById('n');
+  if (!box) return;
+  box.innerHTML = `<b>Section ${i + 1} / ${secs.length}</b>`;
+  box.appendChild(notesWin.document.createTextNode(secs[i].dataset.notes || '(노트 없음)'));
+}
+
+addEventListener('keydown', e => {
+  const k = e.key;
+  if (k === 'ArrowRight' || k === 'ArrowDown' || k === ' ' || k === 'PageDown') { e.preventDefault(); next(); }
+  else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') { e.preventDefault(); prev(); }
+  else if (k === 'Home') { e.preventDefault(); go(0); }
+  else if (k === 'End')  { e.preventDefault(); go(secs.length - 1); }
+  else if (k === 'f' || k === 'F') document.documentElement.requestFullscreen?.();
+  else if (k === 's' || k === 'S') toggleNotes();
+  else if (k === 'i' || k === 'I') { document.body.classList.toggle('nonav'); paintNav(); }
+});
+let tx = 0;
+addEventListener('touchstart', e => tx = e.changedTouches[0].clientY, {passive:true});
+addEventListener('touchend',   e => {
+  const d = e.changedTouches[0].clientY - tx;
+  if (Math.abs(d) > 60) (d < 0 ? next : prev)();
+}, {passive:true});
+
+const [hs, hstep] = location.hash.slice(1).split('.');
+go((parseInt(hs, 10) || 1) - 1, 'auto', parseInt(hstep, 10) || 0);
+</script>
+</body>
+</html>

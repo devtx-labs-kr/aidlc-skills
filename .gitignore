@@ -1,0 +1,19 @@
+# Python build artifacts — .pyc files embed the absolute source path of the
+# machine that compiled them, which leaks the local username.
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# macOS
+.DS_Store
+
+# Not for publication.
+#
+# workshop-idc-triage documents an undocumented AWS control-plane API surface
+# (host, namespace, per-operation signing services, payload shapes) obtained by
+# probing, plus a working SigV4 client for it and internal provisioning failure
+# details. No credentials, but it is not ours to publish. Kept locally, never
+# committed. Do not remove this entry without deciding the disclosure question
+# first.
+workshop-idc-triage/
