@@ -113,6 +113,24 @@ main{margin-left:var(--navw); padding:56px 60px 120px; max-width:1120px;}
 .eyebrow.ko{font-family:var(--sans); font-size:13px; font-weight:700;
   letter-spacing:0; text-transform:none;}
 h1{font-size:41px; font-weight:800; letter-spacing:-.032em; line-height:1.2; margin-top:14px;}
+
+/* 표지 맨 앞의 프로그램 설명(.brief). 이 문서는 첨부로 혼자 이동하므로, 프로그램을
+   모르는 독자가 판정을 읽기 전에 무엇에 대한 판정인지 알아야 한다. 판정(h1)보다
+   조용해야 하므로 활자를 줄이고 바탕만 눌러 둔다 — 표지의 주인공은 판정이다. */
+.brief{
+  margin-top:22px; max-width:880px; padding:20px 24px;
+  background:var(--sunk); border:1px solid var(--rule); border-radius:12px;
+}
+.brief .bt{
+  font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-3); margin-bottom:10px;
+}
+.brief p{font-size:15.5px; line-height:1.68; color:var(--ink-2); margin-top:11px; max-width:none;}
+.brief p:first-of-type{margin-top:0;}
+.brief p b{color:var(--ink);}
+/* 마지막 단락 — "이 문서는 제품 설명이 아니다". 윗선으로 앞 셋과 갈라 둔다. */
+.brief .bn{margin-top:15px; padding-top:14px; border-top:1px solid var(--rule);}
+
 .lead{font-size:19px; color:var(--ink-2); line-height:1.68; margin-top:20px; max-width:840px;}
 .docmeta{
   font-family:var(--mono); font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;
@@ -493,9 +511,25 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 
 <main>
 
-<!-- ═══ 표지. 판정 3문장 + 실측 막대 + 파트 카드 ═══ -->
+<!-- ═══ 표지. 프로그램 설명 + 판정 3문장 + 실측 막대 + 파트 카드 ═══ -->
 <header class="doc-head" id="top">
   <div class="eyebrow">{{PROGRAM}} · {{SUBTITLE}}</div>
+
+  <!-- 프로그램 설명. 판정 제목 앞에 온다 — 이 문서는 첨부로 혼자 이동하므로 프로그램을
+       모르는 독자가 무엇에 대한 판정인지 먼저 알아야 한다. 단락 넷이고 앞 셋은 전부
+       원문 인용에 붙인다. 본문과 같은 규약이다.
+         ① 무엇인가 — 원문이 자기를 정의한 문장 그대로
+         ② 무엇을 하는가 — 산출물과 핵심 흐름. 원문이 성격을 요약한 문장이 있으면 그것
+         ③ 범위 밖으로 못 박은 것 — 제외 목록과 한정 문장. 여기서 성격이 갈린다
+         ④ .bn — "이 문서는 제품 설명이 아니다". 입력 문서 수·규모, 기간, 표면 총계,
+            그리고 파트 4 가 결론이라는 것. 수는 전부 정본에서 옮긴다
+       ①~③ 에 쓰는 수치·기준은 표면 목록과 대조한다. 원문이 "예:" 로 든 값을 판정
+       기준처럼 쓰면 그 표면(임계값 미정)과 문서 안에서 부딪힌다 — 미확정이면 그
+       표면 ID 로 보낸다. 자세한 것은 SKILL.md 7단계 "표지의 프로그램 설명". -->
+  <div class="brief">
+    <div class="bt">이 프로젝트는 무엇인가</div>
+  </div>
+
   <h1>{{한 줄 판정}}</h1>
   <p class="lead">{{근거 한 문장}}. 판정은 세 문장이다.</p>
 
