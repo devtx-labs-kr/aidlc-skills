@@ -15,9 +15,11 @@
 
 종료 코드 0 = 통과, 1 = 문제 있음. CI 없이도 그냥 돌리면 된다.
 """
+import collections
+import json
 import re
 import sys
-import collections
+from pathlib import Path
 
 # Pretendard·Geist Mono 어디에도 없어 시스템 폰트로 대체되는 글자.
 # 실제로 PDF를 뽑아 pdffonts 로 확인해 모은 목록이다. 새로 발견하면 추가한다.
@@ -31,7 +33,59 @@ MISSING_GLYPHS = {
     "∩": "∩ (U+2229) → 「교집합」·「양쪽에 다 있는 것」으로 풀어 쓴다",
     "⊆": "⊆ (U+2286) → 「포함된다」로 풀어 쓴다",
     "∖": "∖ (U+2216) → 「차집합」·「빼면 남는 것」으로 풀어 쓴다",
+    # 실측(it.15): 두 런이 독립적으로 찾았다. `html-conventions.md` 가 이 글자를
+    # **「있다(검증됨)」 목록에 잘못 올려 두었고** 실제로는 Pretendard 에 없어 PDF 가
+    # `AppleSDGothicNeo` 를 끌어왔다. 한 런은 후보 14자를 단독 렌더로 하나씩 확인해
+    # 이 글자만 걸러 냈다. `├`·`│` 는 실측에서 이탈하지 않았으므로 넣지 않는다.
+    #
+    # **그 「이탈하지 않았다」에는 조건이 빠져 있었다 — 자리가 갈린다.** 페이지별 폰트로
+    # 다시 재니 `│`·`├`·`└` 셋 다 **`--sans` 에서 이탈하고**(`.SFNS-Regular` ·
+    # `AppleSDGothicNeo-Regular`) **`--mono` 에서는 `GeistMono` 가 그린다** — Pretendard 에
+    # 박스 드로잉이 없고 Geist Mono 에 있다. 그래서 ①`└` 를 여기 둔 것은 **sans 자리 기준**
+    # 이고 ②`├`·`│` 가 이탈하지 않은 것은 그 산출물에서 **mono 자리였기 때문**이다
+    # (`runs/iteration-2/qms` 는 `│` 를 쓰는데 폰트 전량이 예상 계열이다).
+    # **이 검사는 글자 단위라 자리를 가리지 못한다** — mono 도해의 `└` 도 실패로 잡는다.
+    # 자리를 보게 고치는 것은 검사 설계 변경이라 하지 않았고, 사실만 적어 둔다.
+    "└": "└ (U+2514) → 트리는 `·` 나 들여쓰기로 그린다."
+         " `├`·`│` 는 **mono 자리면** 안전하다(sans 에서는 셋 다 이탈한다)",
+    # 실측(it.16): 원 안 라틴 글자(U+24D0~)가 인용에 들어와 PDF 가 대체 폰트를 끌어왔다.
+    # **원 안 숫자(①~⑳, U+2460~2473)와 다른 대역이다** — 그쪽은 이탈하지 않았다.
+    "ⓐ": "ⓐ (U+24D0) → 원 안 라틴은 폰트에 없다. `①`~`⑳` 이나 `(a)` 로 바꾼다",
+    # 실측(it.19): 2차 반영으로 새로 들어온 `▾` 6자가 PDF 를 대체 폰트로 밀었고
+    # **이 목록에 없어 그 축이 통과했다.** 런이 `to_pdf.py` 출력으로 스스로 찾았다.
+    "▾": "▾ (U+25BE) → `▸` 와 같은 계열인데 이쪽은 폰트에 없다. `·`·`↓` 로 바꾼다",
 }
+
+# **목록을 뒤집는다 — 글자를 하나씩 더하는 방식은 네 판 연속 뚫렸다.**
+# `∪`(it.10) · `└`(it.15) · `ⓐ`(it.16) · `▾`(it.19) 가 전부 「목록에 없어서」 통과했고,
+# 넷 다 `to_pdf.py` 쪽에서 드러났다. 그래서 **폰트 이탈 0 으로 확인된 PDF 에 실제로 들어
+# 있던 글자만 「확인됨」**으로 두고, 그 밖의 비-ASCII·비-한글 글자는 **경고**로 낸다
+# (통과를 바꾸지 않는다 — 원문 인용에 들어온 기호를 실패로 세면 진짜가 묻힌다).
+# 아래 목록은 it.15~it.19 산출물 10개의 전수 재고(30종)다.
+VERIFIED_GLYPHS = set("·═─§—→「」↔…×★⇔↺−↑↓←↕↳")
+# 실사용 판에서 매 판 경고가 난 넷. **골격에 심어 `--sans`·`--mono` 양쪽으로 단독 렌더해
+# 이탈 0 을 확인했다** — 폰트 6종 전부 예상 계열이고 `pdftotext` 가 두 줄을 그대로 뽑았다
+# (글자가 실제로 PDF 에 들어갔다는 뜻이다). 같은 렌더의 대조군 `⊕`·`▾` 는 `.SFNS-Regular`
+# 이탈로 지목됐으므로 **검사가 꺼져서 나온 0 이 아니다.** `÷` 는 산식 표기(실측:
+# `23÷0.116 = 198.3` · `44 ÷ 2`)이고 `▲` 는 원문 인용 안이라, 서술에 쓴 집합 연산 기호
+# (위 `∪` 계열)와 달리 풀어 쓸 대상이 아니다. `≈`·`▼` 는 저장소 산출물에 0회이고
+# 실사용 산출물에서 왔다.
+VERIFIED_GLYPHS |= set("÷≈▲▼")
+# **`±`·`△` 는 같은 렌더에서 깨끗했지만 올리지 않는다** — `iteration-10/woongjin` 의
+# 「확인 안 된 글자 2종(`±`·`△`)」이 이 축의 **유일한 문서화된 양성 회귀 기준**이라,
+# 올리면 0종이 되어 이 검사가 살아 있는지 확인할 자리가 없어진다.
+# 같은 재고(경고 후보 40종 전수 렌더)에서 **양쪽 체인 모두 이탈**로 확인된 것은
+# `⇢ ⏭ ⏮ ⏸ ⓘ ▦ ☐ ⚙ ⚪ ✕ ⬇` 다 — MISSING 후보이지만 실패를 늘리는 변경이라 여기서는
+# 사실만 남긴다. `U+200B` 는 렌더 폭이 없어 이 방식으로 판정되지 않는다(다른 축이다).
+# 원 안 숫자는 ①~⑩ 이 실측으로 확인됐고 **같은 대역의 ⑪~⑳ 도 확인됨으로 둔다** — 한 블록
+# (U+2460~2473)이고 폰트 서브셋이 대역 단위다. [추론] 이라고 적어 둔다. `ⓐ` 계열(U+24D0~)은
+# 실측으로 이탈했으므로 위 실패 목록에 있다.
+VERIFIED_GLYPHS |= {chr(c) for c in range(0x2460, 0x2474)}
+
+# 마크다운 강조가 문자 그대로 렌더되는 자리. 실측(it.15)에서 한 산출물의 본문 네 곳에
+# `**` 가 그대로 찍혔고(PDF 로 확인) 이 검사는 통과했다 — 조립하는 쪽은 자기가 쓴
+# 마크다운이라 못 알아본다. HTML 에서 강조는 `<b>`·`<strong>` 이다.
+MD_EMPHASIS = re.compile(r"\*\*[^*\n]{1,60}\*\*")
 VOID = {"meta", "link", "br", "hr", "img", "input", "col",
         "source", "area", "base", "wbr", "embed", "track", "param"}
 
@@ -52,7 +106,7 @@ SKELETON_PHRASES = (
 )
 
 
-def check(path: str) -> list[str]:
+def check(path: str, extra_glyphs: set = frozenset()) -> list[str]:
     problems: list[str] = []
     try:
         text = open(path, encoding="utf-8").read()
@@ -95,6 +149,13 @@ def check(path: str) -> list[str]:
     for char, advice in MISSING_GLYPHS.items():
         if char in text:
             problems.append(f"폰트에 없는 글자 {advice}")
+    # `to_pdf.py` 가 실측으로 지목한 글자를 **받아쓴다**(it.20 ④). 그쪽이
+    # `<pdf>.glyph-misses.json` 을 남기고 이 검사가 그것을 실패로 승격한다 —
+    # 「목록에 없어서 통과」를 네 판 반복하지 않기 위한 자리다.
+    for char in extra_glyphs:
+        if char in text and char not in MISSING_GLYPHS:
+            problems.append(f"폰트에 없는 글자 {char} (U+{ord(char):04X})"
+                            " — `to_pdf.py` 가 이 문서의 PDF 에서 실측으로 지목했다")
     hanja = {c for c in text if "一" <= c <= "鿿"}
     if hanja:
         problems.append(f"한자 {''.join(sorted(hanja))} — 폰트에 없다. 한글로 바꾼다")
@@ -115,6 +176,80 @@ def check(path: str) -> list[str]:
         codes = " ".join(f"{c}(U+{ord(c):04X})" for c in sorted(emoji))
         problems.append(f"이모지·딩뱃 {codes} — 폰트에 없어 PDF 가 다른 폰트를 끌어온다."
                         " 낱말로 바꾸거나 생략 표시로 줄인다")
+
+    # 확인된 목록 밖의 글자 — **경고이고 통과를 바꾸지 않는다.** 0건이 안전을 뜻하지 않게
+    # 하려면 「무엇을 확인했는가」를 말해야 한다(위 `VERIFIED_GLYPHS` 주석).
+    unknown = {c for c in text
+               if ord(c) >= 0x80 and not ("가" <= c <= "힣")
+               and not ("ㄱ" <= c <= "ㆎ") and not ("一" <= c <= "鿿")
+               and c not in VERIFIED_GLYPHS and c not in MISSING_GLYPHS
+               and c not in emoji and not c.isspace()}
+    if unknown:
+        codes = " ".join(f"{c}(U+{ord(c):04X})" for c in sorted(unknown))
+        problems.append(f"⚠ 폰트 확인이 안 된 글자 {len(unknown)}종: {codes}"
+                        " — **목록에 있는 글자만 실패로 세므로 이것은 경고다.**"
+                        " `to_pdf.py` 로 PDF 를 뽑아 폰트 이탈이 나는지 보고,"
+                        " 이탈하지 않으면 `VERIFIED_GLYPHS` 에 올린다")
+
+    # ── 4-b. 마크다운 강조가 본문에 그대로 찍힌 자리 ───────────────────────
+    # `<style>`·`<script>`·주석을 지운 뒤 **태그 밖 텍스트**만 본다 — CSS 주석과 골격
+    # 스텁 주석에는 `**` 가 정상으로 들어 있고 그것은 렌더되지 않는다.
+    rendered = re.sub(r"<(style|script)[^>]*>.*?</\1>",
+                      lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
+    rendered = COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), rendered)
+    # **인용 안과 밖을 가른다.** 실측(it.15)에서 한 산출물의 `**` 23건이 **전부 원문 인용
+    # 안**이었다 — 원문이 마크다운 파일이라 `**버전:**` 이 그 파일의 표기다. 마크다운 기호는
+    # 서식이지 내용이 아니므로 `<b>` 로 바꾸는 것이 맞지만, 인용을 손대는 판단이 필요하므로
+    # 경고로 둔다. **우리가 쓴 문장(인용 밖)의 `**` 는 명백한 오류라 어긋남으로 센다.**
+    # 지울 때 **줄바꿈은 남긴다.** 공백으로 통째로 치환하면 이후 행 번호가 밀린다
+    # (실측에서 그 버그로 보고 행이 7행씩 어긋났다).
+    blank = lambda m: re.sub(r"[^\n]", " ", m.group(0))
+    no_q_md = re.sub(r'<span class="q"[^>]*>.*?</span>', blank, rendered, flags=re.S)
+    for i, (line, line_nq) in enumerate(zip(rendered.splitlines(),
+                                            no_q_md.splitlines()), 1):
+        bare, bare_nq = (re.sub(r"<[^>]+>", " ", x) for x in (line, line_nq))
+        outside_q = MD_EMPHASIS.findall(bare_nq)
+        for hit in outside_q:
+            problems.append(f"{i}행 — 마크다운 강조가 그대로 찍혔다: {hit[:44]}"
+                            " → `<b>` 로 바꾼다")
+        n_in = len(MD_EMPHASIS.findall(bare)) - len(outside_q)
+        if n_in > 0:
+            problems.append(f"⚠ {i}행 — 원문 인용 안에 마크다운 `**` 가 {n_in}건 있다."
+                            " PDF 에 그대로 찍힌다 — 뜻은 그대로 두고 `<b>` 로 바꾼다")
+
+    # ── 4-c. 옛 낱말이 남은 자리 ───────────────────────────────────────────
+    # 어휘를 Contract·Layer·Workstream 으로 고정한 뒤(it.14 이후) 실측에서 한 산출물이
+    # 같은 대상을 두 이름으로 불렀다 — 「Layer 3단 + 사전 준비 층」처럼 한 문장에 둘이
+    # 함께 있는 자리까지 있었다. **스크립트가 양쪽 낱말을 다 받게 만들어도 본문은 섞인다.**
+    #
+    # **원문 인용(`.q`) 안은 세지 않는다.** 고객 문서가 「데이터 계층 구조」라고 적은 것을
+    # 우리가 바꿔 쓸 수는 없다. 인용을 지우지 않으면 이 검사는 오탐 기계가 된다.
+    no_q = re.sub(r'<span class="q"[^>]*>.*?</span>', blank, rendered, flags=re.S)
+    for i, line in enumerate(no_q.splitlines(), 1):
+        bare = re.sub(r"<[^>]+>", " ", line)
+        # 파일·스크립트 옛 이름은 뜻이 하나뿐이라 어긋남으로 센다
+        for old_name, new_name in (("surfaces.json", "contracts.json"),
+                                   ("surface_matrix", "contract_matrix")):
+            if old_name in bare:
+                problems.append(f"{i}행 — 옛 파일 이름 `{old_name}` → `{new_name}`")
+        # 옛 라벨은 문자열이 길어 중의성이 없다
+        for lab, new_lab in (("종이로 닫힌다", "받아올 것 없음"), ("종이로 된다", "받아올 것 없음"),
+                             ("실물 대기", "실물 필요"), ("회신 대기", "회신 필요")):
+            if lab in bare:
+                problems.append(f"{i}행 — 옛 라벨 「{lab}」 → 「{new_lab}」")
+        # 낱말 축은 **경고**다. 「계층」·「위층」처럼 다른 뜻인 복합어가 있어 통과를 막지 않는다.
+        for w, new_w in (("표면", "Contract"), ("층", "Layer"), ("갈래", "Workstream")):
+            # it.19: 조사가 붙은 자리를 받는다 — `(?![가-힣])` 하나로는 *"두 번째 갈래가"*
+            # (it.18 실측)를 놓쳤고 **경고도 안 떴다.** 조사 한 글자까지만 허용한다 —
+            # 두 글자 조사(에서·으로)까지 열면 「층계」 계열 복합어 오탐이 커진다.
+            for m in re.finditer(
+                    rf"(?<![가-힣0-9]){w}(?:[가이은는을를도의와과만로에](?![가-힣]))?(?![가-힣])",
+                    bare):
+                pre = bare[max(0, m.start() - 1):m.start()]
+                if w == "층" and pre in ("계", "위", "래", "상", "하", "최", "고", "저"):
+                    continue
+                problems.append(f"⚠ {i}행 — 옛 낱말 「{w}」 가 남았다(→ {new_w})"
+                                f": …{bare[max(0, m.start()-24):m.start()+20].strip()}…")
 
     # ── 5. 골격 주석이 본문에 새어 나온 자리 ───────────────────────────────
     # 실측: 골격 스텁 주석을 편집하다 여는 `<!--` 가 지워져 지시문이 **고객 문서 본문에
@@ -163,13 +298,27 @@ def check(path: str) -> list[str]:
 
 
 def main() -> int:
-    paths = sys.argv[1:]
+    argv = sys.argv[1:]
+    extra = set()
+    if "--glyph-report" in argv:
+        i = argv.index("--glyph-report")
+        report = argv[i + 1] if i + 1 < len(argv) else ""
+        del argv[i:i + 2]
+        try:
+            extra = set(json.loads(Path(report).read_text(encoding="utf-8"))
+                        .get("glyphs", []))
+            print(f"· `to_pdf.py` 의 실측을 받아썼다 — 글자 {len(extra)}종"
+                  f" ({' '.join(sorted(extra))})")
+        except OSError as exc:
+            print(f"✗ `--glyph-report` 를 읽지 못했다: {exc}")
+            return 1
+    paths = argv
     if not paths:
         print(__doc__)
         return 1
     failed = False
     for path in paths:
-        found = check(path)
+        found = check(path, extra)
         hard = [p for p in found if not p.startswith("⚠")]
         warn = [p for p in found if p.startswith("⚠")]
         if hard:

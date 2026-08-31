@@ -28,7 +28,7 @@
        "파랑 = 에이전트" 를 배운 뒤 그 매핑으로 덱 전체를 읽기 때문이다.
      ─ 이 파일은 덱이 아니라 읽는 문서이고 그 매핑을 가르치는 자리가 없다. 주체는
        .tag 배지의 한글 라벨("AI 에이전트" · "사람이 나눠 맡는 자리")이 직접 말한다.
-       그래서 --agent-* 계열을 구조 강조 축(1층·두꺼운 경계·큰 수치)에도 함께 쓴다.
+       그래서 --agent-* 계열을 구조 강조 축(Layer 1 · 두꺼운 경계·큰 수치)에도 함께 쓴다.
        의도적 이탈이며, 근사한 두 번째 파랑을 만들지 않기 위한 선택이다. */
   --human-fill:#D7FBE5;  --human-ink:#12813C;  --human-line:#96E4B4;  --human-solid:#17B457;
   --agent-fill:#E2ECFF;  --agent-ink:#1E4FD8;  --agent-line:#AEC7FB;  --agent-solid:#2F6BF6;
@@ -49,8 +49,16 @@
   --st-gap-ink:#A16207; --st-gap-fill:#FEF6C7; --st-gap-line:#F3DE8A;
   --st-ok-ink:#12813C;  --st-ok-fill:#EAFBF1;  --st-ok-line:#B7EDCE;
 
-  --shadow:0 1px 1px rgba(24,26,28,.03),0 4px 12px rgba(24,26,28,.045),0 18px 44px rgba(24,26,28,.055);
-  --shadow-sm:0 1px 2px rgba(24,26,28,.04),0 2px 8px rgba(24,26,28,.04);
+  /* 상승(elevation)은 한 단만 둔다. 이 문서는 앱 UI 가 아니라 인쇄되는 보고서이고,
+     상자마다 그림자를 주면 판정이 아니라 위젯 모음으로 읽힌다. 위계는 그림자가 아니라
+     머리카락 선(--rule)과 여백으로 만든다. --shadow 는 파트 판에만 쓴다. */
+  --shadow:0 1px 2px rgba(24,26,28,.04),0 8px 24px rgba(24,26,28,.05);
+  --shadow-sm:none;
+
+  /* 반경 3단 — 컨테이너 / 안쪽 요소 / 알약. 섞이면 격이 떨어진다.
+     이 셋 밖의 값을 새로 만들지 않는다. */
+  --r-lg:12px; --r-md:8px; --r-pill:9999px;
+
   --ease:cubic-bezier(.32,.72,0,1);
   --navw:268px;
 }
@@ -91,6 +99,11 @@ body{
 #toc a .n{font-family:var(--mono); font-size:11.5px; font-weight:600;
   color:var(--ink-4); margin-right:8px;}
 #toc a.on .n{color:var(--agent-ink);}
+/* 파트 라벨의 번호는 파트 라벨과 같은 크기로 맞춘다 — 절 번호 크기(11.5px)를 그대로
+   물려받으면 파트 라벨(10.5px)보다 커져 계층이 뒤집힌다. **번호를 빼지 않는다** —
+   본문이 「파트 4 §2」로 참조하는데 목차에 파트 번호가 없으면 독자가 파트를 세어야 한다
+   (실사용 판에서 「파트 6」을 찾지 못했다). 절에는 번호가 있고 파트에만 없던 자리다. */
+#toc a.tgrp .n{font-size:10.5px; letter-spacing:0; margin-right:7px;}
 #toc a.sub{font-size:13px; padding-left:30px; margin-left:-10px;}
 /* 파트 라벨. 클릭은 되지만 스크롤 스파이 대상에서는 빠진다. */
 #toc a.tgrp{
@@ -100,8 +113,24 @@ body{
   border-top:1px solid var(--rule); border-left:0; border-radius:0;
   padding-top:14px;
 }
-#toc a.tgrp:first-of-type{margin-top:4px; border-top:0; padding-top:6px;}
+/* 첫 파트 라벨은 윗선을 지운다 — `.brand` 가 이미 아래에 선을 갖고 있어 두 겹이 된다.
+   `:first-of-type` 을 쓰면 안 된다: `.brand` 가 `#toc` 의 첫 앵커라서 `a.tgrp:first-of-type`
+   은 **한 번도 매칭되지 않는다**(요소 종류가 같은 형제 중 첫째를 뜻하므로). 인접 형제로 잡는다. */
+#toc .brand + a.tgrp{margin-top:4px; border-top:0; padding-top:6px;}
 #toc a.tgrp:hover{background:transparent; color:var(--agent-ink);}
+/* 파트 라벨의 **한국어 질문**. 영문 한 낱말(`SCOPE`·`REACH`)만으로는 그 파트가 무엇을
+   답하는지 알 수 없다 — 표지 파트 카드에는 이 질문(`.ph`)이 있는데 목차에 없어서
+   실사용 판에서 독자가 파트를 짚지 못했다. 목차는 화면에서 **항상 보이는 유일한 지도**다.
+   절 제목이 전부 한국어이므로 파트만 영문으로 두면 훑는 리듬이 끊긴다. */
+#toc a.tgrp .tq{
+  display:block; font-family:var(--sans); font-size:12.5px; font-weight:600;
+  letter-spacing:0; text-transform:none; color:var(--ink-4); margin-top:3px;
+}
+/* 지금 읽는 절이 속한 파트를 **약하게** 표시한다. 절은 배경 + 왼쪽 선으로 강하게 켜지므로
+   파트는 색만 바꿔 계층이 뒤집히지 않게 한다 — 같은 강도로 켜면 "지금 어디인지" 가
+   오히려 흐려진다(그래서 `.tgrp` 은 스파이의 `.on` 대상에서 빼고 `.onp` 를 따로 쓴다). */
+#toc a.tgrp.onp{color:var(--agent-ink);}
+#toc a.tgrp.onp .tq{color:var(--agent-ink);}
 
 /* ── 본문 ──────────────────────────────────────────────────────────────────── */
 main{margin-left:var(--navw); padding:56px 60px 120px; max-width:1120px;}
@@ -137,7 +166,10 @@ h1{font-size:41px; font-weight:800; letter-spacing:-.032em; line-height:1.2; mar
   color:var(--ink-4); margin-top:24px; display:flex; flex-wrap:wrap; gap:8px 20px;
 }
 
-section{padding-top:52px;}
+/* 절 리듬. 파트 판(어두운 판) 다음 절은 선을 얹지 않는다 — 판이 이미 경계다.
+   그 밖의 절은 머리카락 선으로 열어 편집물의 「장」 리듬을 만든다. */
+section{padding-top:46px; margin-top:26px; border-top:1px solid var(--rule);}
+.part + section{padding-top:34px; margin-top:0; border-top:0;}
 h2{font-size:27px; font-weight:800; letter-spacing:-.026em; line-height:1.3;
   display:flex; align-items:baseline; gap:14px;}
 h2 .sn{font-family:var(--mono); font-size:15px; font-weight:700; color:var(--agent-ink);
@@ -150,14 +182,30 @@ p.tight{margin-top:9px;}
 b{font-weight:700;}
 strong{font-weight:700;}
 code, .m{font-family:var(--mono); font-size:.895em; background:var(--sunk);
-  border:1px solid var(--rule); border-radius:5px; padding:1.5px 5px; white-space:nowrap;}
+  border:1px solid var(--rule); border-radius:6px; padding:1.5px 5px; white-space:nowrap;}
+/* `.m` 이 앵커 요소면 눌러 이동하는 자리로 만든다. **눌러도 반응이 없으면 배지가
+   "누를 수 있는 것처럼" 보이는 것 자체가 오독을 만든다** — 실사용 판에서 독자가
+   본문의 `C11` 을 누르면 그 카드로 갈 줄 알았다. 색인 칩(`.chips a`)과 시각적으로
+   구별되어야 하므로 **평상시에는 회색 배지 그대로** 두고, hover 때만 파랑으로 힌트를
+   준다. 마우스가 없는 환경에서도 클릭은 작동한다(a 요소 자체의 기본 동작). */
+a.m{color:inherit; text-decoration:none;}
+a.m:hover{border-color:var(--agent-line); color:var(--agent-ink); background:var(--agent-fill);}
+/* 열에 수가 쌓이는 문서다. 폭이 다른 숫자는 자릿수가 어긋나 보이므로 전부 고정폭으로
+   맞춘다 — 표·막대·행렬·mono 조각 전부. 보고서의 격은 여기서 갈린다. */
+table, .m, code, .bv, .num, .mx, .bar, .sfh .sid{font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1;}
+/* 제목이 마지막 줄에 한 낱말만 남는 것을 막는다(지원 안 되면 조용히 무시된다). */
+h1,h2,h3,.card .ct,.node .nt,.fbox .bt{text-wrap:balance;}
+p,.lead,.part .pr,.card .cd,figcaption{text-wrap:pretty;}
 
-/* 원문 인용 — 저장소 규약상 기울임을 쓰지 않는다. 색과 굵기로만 표시한다. */
-.q{font-weight:600; color:var(--agent-ink); font-style:normal;}
+/* 원문 인용 — 저장소 규약상 기울임을 쓰지 않는다. 색과 굵기로만 표시한다.
+   같은 파랑 계열의 **더 깊은 색조**를 쓴다. 링크색과 같은 밝은 파랑이면 표 안에서
+   인용이 본문보다 먼저 읽혀 행의 뜻을 가린다 — 인용은 근거이지 강조가 아니다. */
+.q{font-weight:600; color:#1B3F9E; font-style:normal;}
 blockquote{
   margin-top:20px; padding:16px 22px; max-width:860px;
   background:var(--agent-fill); border-left:3px solid var(--agent-solid);
-  border-radius:0 10px 10px 0; font-size:16px; line-height:1.68;
+  border-radius:0 var(--r-lg) var(--r-lg) 0; font-size:16px; line-height:1.68;
 }
 blockquote .src{display:block; font-family:var(--mono); font-size:11px; font-weight:600;
   letter-spacing:.07em; text-transform:uppercase; color:var(--agent-ink);
@@ -168,11 +216,15 @@ blockquote.note .src{color:var(--ink-3);}
 /* ── 표 ────────────────────────────────────────────────────────────────────── */
 .tw{margin-top:24px; overflow-x:auto;}
 table{border-collapse:collapse; width:100%; font-size:15.5px; background:var(--sheet);
-  border:1px solid var(--rule); border-radius:12px; overflow:hidden;}
+  border:1px solid var(--rule); border-radius:var(--r-lg); overflow:hidden;}
 th,td{padding:12px 16px; text-align:left; vertical-align:top;
   border-bottom:1px solid var(--rule); line-height:1.6;}
-thead th{background:var(--sunk); font-size:12px; font-weight:700; letter-spacing:.04em;
-  color:var(--ink-3); text-transform:none; white-space:nowrap;}
+/* 머리행을 회색으로 채우면 표가 위젯처럼 보인다. 채움을 걷고 잉크 밑선 하나로
+   본문과 가른다 — 인쇄물의 표가 쓰는 방식이고 잉크도 덜 먹는다. */
+thead th{background:transparent; font-size:12.5px; font-weight:700; letter-spacing:.01em;
+  color:var(--ink); text-transform:none; white-space:nowrap;
+  border-bottom:1.5px solid var(--ink-4); padding-top:14px;}
+tbody tr+tr td{border-top:0;}
 tbody tr:last-child td{border-bottom:0;}
 td.k{font-weight:700; color:var(--ink); white-space:nowrap;}
 td.num{font-family:var(--mono); font-weight:700; text-align:center; white-space:nowrap;}
@@ -193,8 +245,8 @@ td.num{font-family:var(--mono); font-weight:700; text-align:center; white-space:
 .cards{display:grid; gap:16px; margin-top:24px;}
 .cards.c2{grid-template-columns:repeat(2,1fr);}
 .cards.c4{grid-template-columns:repeat(2,1fr);}
-.card{background:var(--sheet); border:1px solid var(--rule); border-radius:13px;
-  padding:20px 22px; box-shadow:var(--shadow-sm);}
+.card{background:var(--sheet); border:1px solid var(--rule); border-radius:var(--r-lg);
+  padding:20px 22px;}
 .card .ct{font-size:17.5px; font-weight:700; letter-spacing:-.012em;}
 .card .cd{font-size:15px; color:var(--ink-2); margin-top:8px; line-height:1.62;}
 .card .cm{font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:.07em;
@@ -206,21 +258,22 @@ td.num{font-family:var(--mono); font-weight:700; text-align:center; white-space:
 /* ── 도해 공통 ─────────────────────────────────────────────────────────────── */
 figure{margin-top:28px;}
 figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.6;}
-.fig{background:var(--sheet); border:1px solid var(--rule); border-radius:14px;
-  padding:30px 28px; box-shadow:var(--shadow-sm);}
+.fig{background:var(--sheet); border:1px solid var(--rule); border-radius:var(--r-lg);
+  padding:30px 28px;}
 
 /* ── 파트 구분자 ───────────────────────────────────────────────────────────── */
 .part{
-  margin-top:76px; padding:30px 32px; border-radius:16px;
+  margin-top:76px; padding:30px 32px; border-radius:var(--r-lg);
   background:var(--ink); color:#F4F4F2; box-shadow:var(--shadow);
 }
 .part:first-of-type{margin-top:44px;}
 .part .pn{
   font-family:var(--mono); font-size:11.5px; font-weight:700; letter-spacing:.16em;
   text-transform:uppercase; color:#9BB6F5;
+  padding-bottom:14px; margin-bottom:16px; border-bottom:1px solid #33363B;
 }
-.part h2{font-size:31px; font-weight:800; letter-spacing:-.028em; margin-top:11px;
-  color:#FFFFFF; display:block;}
+.part h2{font-size:33px; font-weight:800; letter-spacing:-.03em; margin-top:0;
+  color:#FFFFFF; display:block; line-height:1.24;}
 .part .pr{font-size:16px; color:#B9BABD; margin-top:12px; max-width:820px; line-height:1.66;}
 .part .pmeta{
   font-family:var(--mono); font-size:10.5px; letter-spacing:.07em; text-transform:uppercase;
@@ -231,20 +284,19 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 .pidx{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-top:28px;}
 .pidx a{
   display:block; text-decoration:none; color:inherit;
-  background:var(--sheet); border:1px solid var(--rule); border-radius:12px; padding:16px 18px;
-  box-shadow:var(--shadow-sm); transition:border-color .18s var(--ease),transform .18s var(--ease);
+  background:var(--sheet); border:1px solid var(--rule); border-radius:var(--r-lg); padding:16px 18px;
+  transition:border-color .18s var(--ease),background .18s var(--ease);
 }
-.pidx a:hover{border-color:var(--agent-line); transform:translateY(-1px);}
+.pidx a:hover{border-color:var(--agent-line); background:var(--sunk);}
 .pidx .pt{font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.1em;
   text-transform:uppercase; color:var(--agent-ink);}
 .pidx .ph{font-size:16.5px; font-weight:700; margin-top:7px; letter-spacing:-.012em;}
 .pidx .pp{font-size:13.5px; color:var(--ink-3); margin-top:5px; line-height:1.55;}
 
-/* ── 계약 표면 카드 (C1 …) ───────────────────────────────────────────────── */
+/* ── 계약 Contract 카드 (C1 …) ───────────────────────────────────────────────── */
 .surface{
   margin-top:22px; background:var(--sheet); border:1px solid var(--rule);
-  border-left:4px solid var(--rule); border-radius:12px; padding:20px 22px;
-  box-shadow:var(--shadow-sm);
+  border-left:4px solid var(--rule); border-radius:var(--r-lg); padding:20px 22px;
 }
 .surface.con{border-left-color:var(--st-con-ink);}
 .surface.dup{border-left-color:var(--st-dup-ink);}
@@ -254,7 +306,7 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 .sfh .sid{
   font-family:var(--mono); font-size:16px; font-weight:700; letter-spacing:.01em;
   color:var(--ink); background:var(--sunk); border:1px solid var(--rule);
-  border-radius:7px; padding:2px 9px; flex:none;
+  border-radius:var(--r-md); padding:2px 9px; flex:none;
 }
 .sfh h4{font-size:18.5px; font-weight:700; letter-spacing:-.014em; line-height:1.35;}
 .sfmeta{font-size:13.5px; color:var(--ink-3); margin-top:10px; line-height:1.6;}
@@ -292,38 +344,50 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 .sq.con{background:var(--st-con-ink);} .sq.dup{background:var(--st-dup-ink);}
 .sq.gap{background:var(--st-gap-ink);} .sq.ok{background:var(--st-ok-ink);}
 
-/* 표면 색인 칩 */
+/* 이 문서 안을 가리키는 상호참조. **`§N` 이 두 대상에 붙는 것을 가르는 신호다** —
+   실측(실사용 판)에서 독자가 "판정은 ②축" 을 읽고 그 축을 찾지 못했다. 원인은 원문
+   절 참조(`§4.1` 이 69회 · `§5` 56회 …)와 이 문서 절 참조(`파트 4 §2` 34회)가 같은
+   `§` 를 쓰는 것이었다. **이 문서 안을 가리킬 때만 감싼다** — 고객 원문의 절은 검정
+   그대로 두어, 밑줄 유무가 「이 문서 ↔ 원문」을 가른다. 감싸면 클릭으로 이동하고
+   `check_html.py` 가 깨진 앵커를 잡는다. */
+.xr{
+  color:var(--agent-ink); text-decoration:none;
+  border-bottom:1px dotted var(--agent-line);
+}
+.xr:hover{border-bottom-color:var(--agent-ink);}
+
+/* Contract 색인 칩 */
 .chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:22px;}
 .chips a{
   font-family:var(--mono); font-size:12.5px; font-weight:700; text-decoration:none;
-  padding:5px 10px; border-radius:7px; border:1px solid var(--rule);
+  padding:5px 10px; border-radius:var(--r-md); border:1px solid var(--rule);
   background:var(--sheet); color:var(--ink-2); transition:transform .15s var(--ease);
 }
-.chips a:hover{transform:translateY(-1px);}
+.chips a:hover{border-color:var(--agent-line);}
 .chips a.con{background:var(--st-con-fill); color:var(--st-con-ink); border-color:var(--st-con-line);}
 .chips a.dup{background:var(--st-dup-fill); color:var(--st-dup-ink); border-color:var(--st-dup-line);}
 .chips a.gap{background:var(--st-gap-fill); color:var(--st-gap-ink); border-color:var(--st-gap-line);}
 .chips a.ok {background:var(--st-ok-fill);  color:var(--st-ok-ink);  border-color:var(--st-ok-line);}
 
-/* ── 도해 1 · 세 층 스택 ───────────────────────────────────────────────────── */
-/* 아래가 1층이다. 원문이 "아래층이 정해지지 않으면 위층이 시작되지 않는다" 로
+/* ── 도해 1 · 세 Layer 스택 ───────────────────────────────────────────────────── */
+/* 아래가 Layer 1 이다. 원문이 "아래 Layer 가 정해지지 않으면 위 Layer 가 시작되지 않는다" 로
    서술하므로 mermaid 의 flowchart BT 방향을 그대로 유지한다. */
 .stack{display:flex; flex-direction:column-reverse; gap:0;}
-.layer{border-radius:12px; padding:16px 18px; position:relative;}
+.layer{border-radius:var(--r-lg); padding:16px 18px; position:relative;}
 .layer .ltag{font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.1em;
   text-transform:uppercase; color:var(--ink-4); margin-bottom:11px;}
 .layer.L1{background:var(--agent-fill); border:2px solid var(--agent-solid);}
 .layer.L1 .ltag{color:var(--agent-ink);}
 .layer.L2{background:var(--sheet); border:1.5px solid var(--engine-line);}
 .layer.L3{background:var(--sunk); border:1px solid var(--rule);}
-.node{background:var(--sheet); border:1px solid var(--rule); border-radius:9px;
-  padding:13px 15px; box-shadow:var(--shadow-sm);}
+.node{background:var(--sheet); border:1px solid var(--rule); border-radius:var(--r-md);
+  padding:13px 15px;}
 .node .nt{font-size:16.5px; font-weight:700; letter-spacing:-.01em;}
 .node .nd{font-size:14px; color:var(--ink-2); margin-top:5px; line-height:1.55;}
 .node .nm{font-family:var(--mono); font-size:11px; font-weight:600; color:var(--agent-ink);
   margin-top:7px; letter-spacing:.04em;}
 
-/* 1층 내부 — 갈래 두 개가 양방향으로 묶일 때 쓴다 */
+/* Layer 1 내부 — Workstream 두 개가 양방향으로 묶일 때 쓴다 */
 .pair{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px;}
 .bidi{text-align:center; flex:none; min-width:132px;}
 .bidi .arr{font-size:20px; font-weight:700; color:var(--agent-solid); line-height:1;}
@@ -331,10 +395,10 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
   margin-top:5px; letter-spacing:.03em;}
 .bidi .sub{font-size:12px; color:var(--ink-3); margin-top:4px; line-height:1.45;}
 
-/* 층 사이 화살표 행 */
+/* Layer 사이 화살표 행 */
 .erow{display:flex; gap:12px; padding:13px 6px; align-items:stretch;}
 .edge{flex:1; display:flex; gap:9px; align-items:flex-start;
-  background:var(--sunk); border:1px solid var(--rule); border-radius:9px; padding:9px 11px;}
+  background:var(--sunk); border:1px solid var(--rule); border-radius:var(--r-md); padding:9px 11px;}
 .edge .up{font-size:15px; font-weight:700; color:var(--engine-solid); line-height:1.2; flex:none;}
 .edge.hot{background:var(--warn-fill); border-color:var(--warn-line);}
 .edge.hot .up{color:var(--warn-solid);}
@@ -351,8 +415,8 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 .fcol{flex:1; min-width:104px; display:flex; flex-direction:column; gap:9px;}
 .fhd{font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.08em;
   text-transform:uppercase; color:var(--ink-4); text-align:center;}
-.fbox{background:var(--sheet); border:1px solid var(--rule); border-radius:10px;
-  padding:12px 11px; text-align:center; box-shadow:var(--shadow-sm); flex:1;
+.fbox{background:var(--sheet); border:1px solid var(--rule); border-radius:var(--r-md);
+  padding:12px 11px; text-align:center; flex:1;
   display:flex; flex-direction:column; justify-content:center;}
 .fbox .bt{font-size:14.5px; font-weight:700; line-height:1.4;}
 .fbox .bd{font-size:12px; color:var(--ink-3); margin-top:5px; line-height:1.45;}
@@ -368,8 +432,8 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 /* ── 도해 3 · 세로 흐름 (단계 → 게이트 → 병행) ─────────────────────────────── */
 .vflow{display:flex; flex-direction:column;}
 .vbox{
-  background:var(--sheet); border:1px solid var(--rule); border-radius:11px;
-  padding:14px 17px; box-shadow:var(--shadow-sm);
+  background:var(--sheet); border:1px solid var(--rule); border-radius:var(--r-lg);
+  padding:14px 17px;
 }
 .vbox .vt{font-size:16px; font-weight:700; letter-spacing:-.012em;}
 .vbox .vd{font-size:13.5px; color:var(--ink-3); margin-top:6px; line-height:1.55;}
@@ -379,8 +443,10 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 .vbox.gate .vd{color:var(--st-con-ink);}
 .vbox.base{background:linear-gradient(180deg,var(--agent-fill),var(--sheet) 82%);
   border-color:var(--agent-line);}
-.vbox.side{background:#FFFDF0; border-color:#E3CE7A;}
-.vbox.side .vd{color:#6B5300;}
+/* 하드코딩 노랑을 쓰지 않는다 — 팔레트가 문서 안에서 흔들리면 격이 떨어진다.
+   이 상자가 말하는 것은 「아직 규격이 없다」이므로 갭(gap) 계열을 그대로 쓴다. */
+.vbox.side{background:var(--st-gap-fill); border-color:var(--st-gap-line);}
+.vbox.side .vd{color:var(--st-gap-ink);}
 .vsep{
   align-self:center; color:var(--engine-solid); font-size:17px; font-weight:700;
   line-height:1; padding:9px 0;
@@ -391,7 +457,7 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 }
 .vrow{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
 .vpair{display:grid; grid-template-columns:1fr auto 300px; gap:0 16px; align-items:center;}
-.vpair .arr{font-size:15px; color:#C9A227; font-weight:700; text-align:center;}
+.vpair .arr{font-size:15px; color:var(--st-gap-ink); font-weight:700; text-align:center;}
 
 /* ── 관여도 막대 ───────────────────────────────────────────────────────────── */
 .bars{margin-top:24px; display:flex; flex-direction:column; gap:14px; max-width:840px;}
@@ -399,8 +465,8 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 .bar .bl{font-size:15px; font-weight:700; text-align:right;}
 .bar .bl small{display:block; font-size:12.5px; font-weight:400; color:var(--ink-3);}
 .bar .track{height:26px; background:var(--sunk); border:1px solid var(--rule);
-  border-radius:7px; overflow:hidden;}
-.bar .fill{height:100%; background:var(--agent-solid); border-radius:6px 0 0 6px;}
+  border-radius:var(--r-md); overflow:hidden;}
+.bar .fill{height:100%; background:var(--agent-solid); border-radius:7px 0 0 7px;}
 .bar .fill.q2{background:var(--agent-line);}
 .bar .fill.q3{background:var(--engine-line);}
 .bar .bv{font-family:var(--mono); font-size:14px; font-weight:700; color:var(--ink-2);}
@@ -413,13 +479,14 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 .mx tbody th{background:transparent; font-family:var(--mono); font-size:12px; font-weight:700;
   color:var(--ink-3); padding-right:8px; text-align:right;}
 .mx td span{display:flex; align-items:center; justify-content:center;
-  width:74px; height:52px; border-radius:9px; font-family:var(--mono);
+  width:74px; height:52px; border-radius:var(--r-md); font-family:var(--mono);
   font-size:17px; font-weight:700; border:1px solid var(--rule);}
 .mx .v0 span{background:var(--sunk); color:var(--ink-4); font-size:14px;}
-.mx .v1 span{background:#F2F5FC; color:var(--ink-2);}
+.mx .v1 span{background:color-mix(in srgb, var(--agent-fill) 45%, var(--sheet));
+  color:var(--ink-2);}
 .mx .v2 span{background:var(--agent-fill); color:var(--agent-ink);}
 .mx .v3 span{background:var(--agent-solid); color:#fff; border-color:var(--agent-solid);
-  box-shadow:var(--shadow-sm); font-size:21px;}
+  font-size:21px;}
 
 @media (max-width:1080px){
   :root{--navw:0px;}
@@ -450,6 +517,10 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
   .part{page-break-before:always; background:#fff; color:var(--ink);
     border-top:3px solid var(--ink); border-radius:0; box-shadow:none;
     padding:18px 0 14px;}
+  /* 인쇄에서는 판이 흰 바탕이 되므로 3px 윗선 하나가 경계다. 화면용 라벨 밑선과
+     절 윗선을 함께 두면 선이 세 겹으로 쌓여 지저분해진다. */
+  .part .pn{border-bottom:0; padding-bottom:0; margin-bottom:9px;}
+  section{border-top:0; margin-top:0; padding-top:30px;}
   .part:first-of-type{page-break-before:avoid;}
   .part h2{color:var(--ink);}
   .part .pn{color:var(--agent-ink);}
@@ -476,42 +547,53 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
 <body>
 
 <!-- ═══ 좌측 목차. 절을 추가하면 여기에도 한 줄 추가한다.
-     .tgrp = 파트 라벨(클릭 이동만, 스크롤 스파이 제외) ═══ -->
+     .tgrp = 파트 라벨. 클릭 이동 + 지금 읽는 파트를 약하게 표시(.onp).
+     ─ 파트 라벨에는 **영문 라벨과 한국어 질문(.tq)을 함께** 준다. 영문 한 낱말만으로는
+       그 파트가 무엇을 답하는지 알 수 없다(실사용 판에서 독자가 못 짚었다).
+       문구는 본문 파트 구분자의 `.pn` + `h2` 와 **같아야** 한다.
+     ─ 절 번호는 **본문 `.sn` 과 같은 두 자리**로 적는다. 한쪽이 「1」이고 다른 쪽이 「01」
+       이면 같은 절을 두 이름으로 부르는 것이 된다(상호참조는 「§1」이라 이미 셋이었다).
+     ─ .sub = 그 절이 담는 것 중 **따로 찾아갈 이름이 있는 것**. 절 제목만으로는 도달하지
+       못하는 자리에만 쓴다 — 지금 둘이다(Contract 색인 · 받아올 것 판정 전량). ═══ -->
 <nav id="toc">
   <a class="brand" href="#top">{{PROGRAM}} · 규모 판정과 {{기간}} 범위</a>
 
-  <a class="tgrp" href="#p1">파트 1 · Scale</a>
-  <a href="#s11"><span class="n">1</span>무엇을 만들어야 하는가</a>
-  <a href="#s12"><span class="n">2</span>{{워크스트림}}별 계약 부담</a>
-  <a href="#s13"><span class="n">3</span>착수 전 확보해야 하는 소스</a>
+  <a class="tgrp" href="#p1"><span class="n">파트 1.</span>Scope<span class="tq">무엇이 들어와 있는가</span></a>
+  <a href="#s11"><span class="n">01</span>문서와 소유 단위</a>
+  <a href="#s12"><span class="n">02</span>부담이 어디에 몰려 있는가</a>
 
-  <a class="tgrp" href="#p2">파트 2 · What fixes the order</a>
-  <a href="#s21"><span class="n">1</span>일이 몇 층으로 쌓여 있다</a>
-  <a href="#s22"><span class="n">2</span>{{A}}와 {{B}}는 서로를 기다린다</a>
-  <a href="#s23"><span class="n">3</span>동시에 열 수 있는 갈래 수</a>
-  <a href="#s24"><span class="n">4</span>배치를 바꿔도 남는 것</a>
+  <a class="tgrp" href="#p2"><span class="n">파트 2.</span>Order<span class="tq">무엇이 순서를 강제하는가</span></a>
+  <a href="#s21"><span class="n">01</span>Layer 셋</a>
+  <a href="#s22"><span class="n">02</span>서로를 기다리는 자리</a>
+  <a href="#s23"><span class="n">03</span>동시에 열 수 있는 Workstream</a>
+  <a href="#s24"><span class="n">04</span>배치를 바꿔도 남는 것</a>
 
-  <a class="tgrp" href="#p3">파트 3 · What must close first</a>
-  <a href="#s31"><span class="n">1</span>계약 지점 {{M}}개의 상태</a>
-  <a href="#s32"><span class="n">2</span>충돌 — 사람이 결정한다</a>
-  <a href="#s33"><span class="n">3</span>고아 — 소유자가 없다</a>
-  <a href="#s34"><span class="n">4</span>소스 없이 닫히지 않는 것</a>
+  <a class="tgrp" href="#p3"><span class="n">파트 3.</span>Open items<span class="tq">무엇이 열려 있는가</span></a>
+  <a href="#s31"><span class="n">01</span>미결 대장 — Contract {{M}}개</a>
+  <a class="sub" href="#cidx">Contract 색인 {{M}}개</a>
+  <a href="#s32"><span class="n">02</span>사람이 결정할 것</a>
+  <a href="#s33"><span class="n">03</span>소유자가 없는 것</a>
+  <a href="#s34"><span class="n">04</span>문서가 스스로 든 미확정</a>
 
-  <a class="tgrp" href="#p4">파트 4 · The {{SCOPE-EN}} scope</a>
-  <a href="#s41"><span class="n">1</span>역산</a>
-  <a href="#s42"><span class="n">2</span>들어오는 것 · 마지막 날 산출물</a>
-  <a href="#s43"><span class="n">3</span>줄이지 말아야 할 것</a>
-  <a href="#s44"><span class="n">4</span>배치 · 완성의 정의</a>
-  <a href="#s45"><span class="n">5</span>확인이 필요한 것</a>
+  <a class="tgrp" href="#p4"><span class="n">파트 4.</span>Where it closes<span class="tq">미결이 어디서 닫히는가</span></a>
+  <a href="#s41"><span class="n">01</span>전량 배정</a>
+  <a href="#s42"><span class="n">02</span>착수 전에 받아 와야 하는 것</a>
+  <a class="sub" href="#s42">받아올 것 판정 전량</a>
+  <a href="#s43"><span class="n">03</span>이월되면 어디로</a>
 
-  <a class="tgrp" href="#pa">부록 · How to start</a>
-  <a href="#sa1"><span class="n">A</span>착수 문장 — 무엇을 치고 시작하는가</a>
-  <a href="#sa2"><span class="n">B</span>문서를 어디에 두는가</a>
+  <a class="tgrp" href="#p5"><span class="n">파트 5.</span>Reach<span class="tq">그래서 어디까지 들어오는가</span></a>
+  <a href="#s51"><span class="n">01</span>구간 수와 역산</a>
+  <a href="#s52"><span class="n">02</span>들어오는 것 · 들어오지 않는 것</a>
+  <a href="#s53"><span class="n">03</span>줄이지 말아야 할 것</a>
+  <a href="#s54"><span class="n">04</span>확인이 필요한 것</a>
+
+  <a class="tgrp" href="#p6"><span class="n">파트 6.</span>Start<span class="tq">무엇을 치고 시작하는가</span></a>
+  <a href="#s61"><span class="n">01</span>착수 문장</a>
 </nav>
 
 <main>
 
-<!-- ═══ 표지. 프로그램 설명 + 판정 3문장 + 실측 막대 + 파트 카드 ═══ -->
+<!-- ═══ 표지. 프로그램 설명 + 판정 3문장 + 실측 막대 3개 + 파트 카드 6장 ═══ -->
 <header class="doc-head" id="top">
   <div class="eyebrow">{{PROGRAM}} · {{SUBTITLE}}</div>
 
@@ -521,11 +603,11 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
          ① 무엇인가 — 원문이 자기를 정의한 문장 그대로
          ② 무엇을 하는가 — 산출물과 핵심 흐름. 원문이 성격을 요약한 문장이 있으면 그것
          ③ 범위 밖으로 못 박은 것 — 제외 목록과 한정 문장. 여기서 성격이 갈린다
-         ④ .bn — "이 문서는 제품 설명이 아니다". 입력 문서 수·규모, 기간, 표면 총계,
-            그리고 파트 4 가 결론이라는 것. 수는 전부 정본에서 옮긴다
-       ①~③ 에 쓰는 수치·기준은 표면 목록과 대조한다. 원문이 "예:" 로 든 값을 판정
-       기준처럼 쓰면 그 표면(임계값 미정)과 문서 안에서 부딪힌다 — 미확정이면 그
-       표면 ID 로 보낸다. 자세한 것은 SKILL.md 7단계 "표지의 프로그램 설명". -->
+         ④ .bn — "이 문서는 제품 설명이 아니다". 입력 문서 수·규모, 기간, Contract 총계,
+            그리고 파트 5 가 결론이고 파트 6 이 그 다음 한 걸음이라는 것. 수는 전부 정본에서 옮긴다
+       ①~③ 에 쓰는 수치·기준은 Contract 목록과 대조한다. 원문이 "예:" 로 든 값을 판정
+       기준처럼 쓰면 그 Contract(임계값 미정)과 문서 안에서 부딪힌다 — 미확정이면 그
+       Contract ID 로 보낸다. 자세한 것은 SKILL.md 7단계 "표지의 프로그램 설명". -->
   <div class="brief">
     <div class="bt">이 프로젝트는 무엇인가</div>
   </div>
@@ -542,175 +624,364 @@ figcaption{font-size:13.5px; color:var(--ink-3); margin-top:14px; line-height:1.
   </div>
 
   <div class="pidx">
-    <!-- 파트 카드 5장(파트 1~4 + 부록). 마지막 장은 grid-column:1 / -1 -->
+    <!-- 파트 카드 6장(Scope · Order · Open items · Where it closes · Reach · Start).
+         2열 격자이므로 여섯이면 딱 맞는다 — 마지막 장에 grid-column 을 주지 않는다.
+         카드마다 .pt(영문 라벨) · .ph(한국어 질문) · .pp(그 파트가 답하는 것 한 줄). -->
   </div>
 </header>
 
 <!-- ══════════════════════════════════════════════════════════════════
-     파트 1 · Scale
+     파트 1. Scope — 무엇이 들어와 있는가
      ══════════════════════════════════════════════════════════════════ -->
 <div class="part" id="p1">
-  <div class="pn">파트 1 · Scale</div>
+  <div class="pn">파트 1. Scope</div>
   <h2>무엇이 들어와 있는가</h2>
-  <p class="pr">{{한 문단 요약 — 이 파트가 무엇을 보여주는가}}</p>
+  <p class="pr">{{한 문단 요약 — 문서 몇 편에서 Contract 몇 개가 나왔고, 소유 단위가 몇인가}}</p>
 </div>
 
 <section id="s11">
-  <h2><span class="sn">01</span>무엇을 만들어야 하는가</h2>
-  <!-- 만드는 것(.cards c4 카드)과 문서가 정의한 갈래 이름. 번호 체계에 빈칸이 있으면 blockquote.note 로 적는다 -->
+  <h2><span class="sn">01</span>문서와 소유 단위</h2>
+  <!-- ★ **세는 단위를 먼저 정의한다.** 파트 3 §1 이 상태 넷(충돌·중복·갭·정리됨)에 정의표를
+       요구하는 것과 같은 이유다 — 이 문서는 첨부로 혼자 이동하고 물어볼 사람이 없다.
+       그런데 **표지가 이미 「Contract N개」로 수를 말한다**(실사용 판 확인). 모르는 단위로
+       센 수를 먼저 읽게 되므로, 이 절 머리에 세 낱말을 한 표로 준다.
+       표 열: 낱말 | 무엇을 세는가 | 이 문서에서 몇
+         Contract    두 문서가 합의해야 하는 지점. 한쪽만 적어도 상대가 있으면 하나로 센다
+         Layer       의존이 쌓인 단. 아래 단이 닫히지 않으면 위 단을 설계할 수 없다
+         Workstream  경계를 주장하는 **소유 단위**. 정책 문서는 세지 않는다 — 경계를 주장하지 않는다
+       ─ **뜻 칸에 「갈래」·「층」·「표면」을 쓰지 않는다.** SKILL.md 별칭 표의 옛 낱말이고
+         `check_html.py` 의 옛 낱말 축이 본문에서 잡는다(실측: 이 표에 「갈래」를 썼더니
+         세 산출물에 경고가 났다). 주석의 별칭은 설명이고 **본문은 검사 대상**이다.
+       ─ 「몇」 열의 수는 정본에서 옮긴다. 세 낱말의 뜻은 SKILL.md 어휘표와 같아야 한다.
+       ─ 표지에서 이 낱말을 처음 쓸 때 이 절로 `.xr` 링크를 건다.
+       ─ **Work 는 여기 넣지 않는다** — 크기를 재는 대상이고 셀 수 있는 단위가 아니다.
+       이어서 입력 문서 표(파일 · 절 수 · 성격) + Workstream 표(무엇을 소유하는가 · 근거 절 ·
+       관여). Workstream 이 문서 구조에서 나온 판단이면 그렇게 적고 확인 요청으로 보낸다. -->
 </section>
 
 <section id="s12">
-  <h2><span class="sn">02</span>{{워크스트림}}별 계약 부담</h2>
-  <!-- .bars 막대 — 갈래별로 몇 개 표면의 당사자인가. width 는 실제 비율로 계산한다 -->
-</section>
-
-<section id="s13">
-  <h2><span class="sn">03</span>착수 전 확보해야 하는 소스</h2>
-  <!-- 확보해야 하는 기존 소스 표(대상·계층·무엇에 필요·읽기전용/쓰기대상) + 현재 상태 blockquote -->
+  <h2><span class="sn">02</span>부담이 어디에 몰려 있는가</h2>
+  <!-- .bars 막대 — Workstream 별로 몇 개 Contract 의 당사자인가. width 는 실제 비율로 계산한다.
+       이어서 쌍별 인접 행렬과 가장 두꺼운 경계. 그 쌍이 파트 2 §2 의 입력이다.
+       수는 contract_matrix.py 출력을 그대로 옮긴다 — 손으로 세지 않는다. -->
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════
-     파트 2 · What fixes the order
+     파트 2. Order — 무엇이 순서를 강제하는가
+     ─ 제목은 판정 방향과 무관하게 중립이다. 판정이 부정이면 .pr 에서 "그래서 구간 N 에
+       압축되지 않는다" 를 못 박고, 긍정이면 어느 Layer 까지 열리는지를 적는다.
      ══════════════════════════════════════════════════════════════════ -->
 <div class="part" id="p2">
-  <div class="pn">파트 2 · What fixes the order</div>
-  <h2>무엇이 순서를 정하는가</h2>
-  <!-- 제목은 판정 방향과 무관하게 중립이다. 판정이 부정이면 아래 .pr 에서
-       "그래서 {{기간}}에 압축되지 않는다" 를 못 박고, 긍정이면 어느 층까지
-       열리는지를 적는다. 제목에 판정을 넣으면 긍정 판정에서 본문과 어긋난다 -->
-  <p class="pr">{{한 문단 요약 — 이 파트가 무엇을 보여주는가. 판정 방향을 여기서 말한다}}</p>
+  <div class="pn">파트 2. Order</div>
+  <h2>무엇이 순서를 강제하는가</h2>
+  <p class="pr">{{한 문단 요약 — Layer 몇 단 · 서로를 기다리는 자리 · 동시 상한. 판정 방향을 여기서 말한다}}</p>
 </div>
 
 <section id="s21">
-  <h2><span class="sn">01</span>일이 몇 층으로 쌓여 있다</h2>
-  <!-- .stack 층 도해. 아래가 1층. 층 사이 .erow/.edge 에 표면 수와 충돌 표시 -->
+  <h2><span class="sn">01</span>Layer 셋</h2>
+  <!-- .stack Layer 도해. 아래가 Layer 1. Layer 사이 .erow/.edge 에 Contract 수와 충돌 표시 -->
 </section>
 
 <section id="s22">
-  <h2><span class="sn">02</span>{{A}}와 {{B}}는 서로를 기다린다</h2>
-  <!-- 양방향 의존 표 — 방향별로 무엇이 걸려 있는가. 완료 기준이 상대 설계에 걸리면 순서로 못 푼다 -->
+  <h2><span class="sn">02</span>서로를 기다리는 자리</h2>
+  <!-- 이 절이 담는 것은 둘이다 — 역방향 의존과 순환. 둘 다 **순서를 강제하는 사실**이고
+       미결의 성질이 아니다(그래서 파트 3 이 아니라 여기다).
+       ① 역방향 의존 — .pair + .bidi 로 양방향을 그린다. 방향별로 무엇이 걸려 있는가.
+          A 의 완료 기준이 B 의 설계에 걸리면 순서로 못 풀고 한 덩어리로 다뤄야 한다.
+          없으면 **후보와 기각 이유를 쓴다** — 그게 0건 판정의 근거다. 이 절을 지우지 않는다.
+       ② 순환 — .flow 도해 + 기각한 후보와 이유. 순환이라는 낱말을 느슨하게 쓰지 않는다.
+          한 방향인 것은 외부 블로커이고 파트 4 §2 가 그 자리를 담는다. -->
 </section>
 
 <section id="s23">
-  <h2><span class="sn">03</span>동시에 열 수 있는 갈래 수</h2>
-  <!-- 시점별로 일이 있는 갈래 수 표 + 동시 상한 결론. 사람 수와 갈래 수를 등치시키지 않는다 -->
+  <h2><span class="sn">03</span>동시에 열 수 있는 Workstream</h2>
+  <!-- 시점별로 일이 있는 Workstream 수 표 + 동시 상한 결론. 사람 수와 Workstream 수를 등치시키지 않는다 -->
 </section>
 
 <section id="s24">
   <h2><span class="sn">04</span>배치를 바꿔도 남는 것</h2>
-  <!-- 배치 대안별 경계 통과 계약 수 표. 마지막 열이 "층 구조 — 남는다" 로 같아야 논증이 선다
-       갈래가 3개 이하면 이 절을 통째로 지운다(목차의 항목도 함께). 대안이 없는데 표를
-       만들면 억지가 되고, 파트 2 요약에 "갈래가 셋뿐이라 배치를 바꿀 여지가 없다" 한 줄이
-       더 강하다 -->
+  <!-- 배치 대안별 경계 통과 Contract 수 표. 마지막 열이 "Layer 구조 — 남는다" 로 같아야
+       논증이 선다. Workstream 이 3개 이하면 이 절을 통째로 지운다(목차의 항목도 함께).
+       대안이 없는데 표를 만들면 억지가 되고, 파트 2 요약에 "Workstream 이 셋뿐이라 배치를
+       바꿀 여지가 없다" 한 줄이 더 강하다.
+       ── 이어서 「완성의 정의」를 같은 절에 둔다 ──
+       지표가 초안이거나 계측 지점이 없으면 "지금은 완성을 판정할 수 없다" 를 적고 그 이유를
+       Contract ID 로 지목한다. 배치와 완성을 한 절에 두는 이유는 둘 다 "바꿔도 남는 것" 을
+       말하기 때문이다 — 배치를 바꿔도 Layer 구조가 남고, 계측이 없으면 어떤 배치로도 완성이
+       판정되지 않는다. 따로 절을 두면 뒤쪽이 앞쪽 수를 다시 인용하는 stub 이 된다
+       (실측 it.15: 그 절이 421자로 파트에서 가장 짧았다). -->
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════
-     파트 3 · What must close first
+     파트 3. Open items — 무엇이 열려 있는가
      ══════════════════════════════════════════════════════════════════ -->
 <div class="part" id="p3">
-  <div class="pn">파트 3 · What must close first</div>
-  <h2>먼저 닫아야 하는 것 — 계약 지점 {{M}}개</h2>
-  <p class="pr">{{한 문단 요약 — 이 파트가 무엇을 보여주는가}}</p>
+  <div class="pn">파트 3. Open items</div>
+  <h2>무엇이 열려 있는가</h2>
+  <!-- 이 요약 문단은 **세 축 지도**로 연다 — 독자가 뒤의 표들을 읽기 전에 알아야 한다.
+       한 Contract 는 세 축에서 **각각 한 칸**을 갖는다. 이 한 문장이 혼란을 없앤다.
+         ① 무엇이 문제인가          충돌 / 중복 / 갭 / 정리됨        §1~§3
+         ② 무엇을 받아 와야 닫히는가  받아올 것 없음 / 회신 / 실물     파트 4 §2
+         ③ 어디서 닫히는가          사전 준비 / ideation / inception / 이월   파트 4
+       **②의 자리를 「§4」로 적지 않는다.** 이 파트 §4 는 「문서가 스스로 든 미확정」이고
+       그 축을 **부분집합에만** 적용한 판정 열이다. ②축 **전량**(개수 카드 + ID)은
+       파트 4 §2 에 있다 — 실사용 판에서 지도가 §4 를 가리켜 독자가 12개짜리 표를 보고
+       "이것이 40개의 축인가" 에서 막혔다. 이 파트 §4 를 함께 적을 때는 **「그중 …」으로
+       종속 관계를 밝힌다.**
+       ②의 질문은 **세 칸과 같은 동사여야 한다** — 옛 문구 *"무엇이 있어야 닫히는가"* 는
+       답이 「받아올 것 없음」인데 질문이 「있어야 하는 것」을 물어 축이 눈에 걸리지 않았다
+       (실사용 판에서 독자가 이 축을 못 찾았다). 파트 4 §2 제목과도 같은 동사로 이어진다.
+       ③의 첫 칸은 **`사전 준비` 로 적는다** — 옛 문구 *"착수 전"* 과 섞여 실사용 판 세 개가
+       한 문서 안에서 두 이름을 함께 썼다(49~53회 ↔ 11~17회). 절 제목 「착수 전에 받아 와야
+       하는 것」은 동사 구문이라 그대로 두고, **축의 칸 이름만** 하나로 맞춘다.
+       ③에 **`이월`(construction)을 빠뜨리지 않는다** — 값이 넷인데 셋만 적으면 독자가 그
+       칸을 축 밖으로 읽는다(실사용 판 세 개 다 이월이 있었다).
+       축이 셋이라는 것을 안 밝히면 독자가 §1 의 "갭 21" 과 §4 의 "실물 필요 8" 을
+       더하려 한다. 실측에서 같은 계열의 혼란(단계 배정 ↔ 받아올 것)이 반복됐다. -->
+  <p class="pr">{{한 문단 요약 — 세 축 지도 + 이 파트가 무엇을 보여주는가}}</p>
 </div>
 
 <section id="s31">
-  <h2><span class="sn">01</span>계약 지점 {{M}}개의 상태</h2>
-  <!-- 상태 4분류 카드(.cards c4) + 갭의 내부 구분 표. 모든 표면이 어느 칸에 들어간다.
+  <h2><span class="sn">01</span>미결 대장 — Contract {{M}}개</h2>
+  <!-- ★ 낱말을 먼저 정의한다. 이 문서는 첨부로 혼자 이동하고, 여는 사람이 "충돌·중복·갭·
+       정리됨" 을 우리 뜻으로 알지 못한다. 상태 카드보다 **정의표가 앞**에 온다.
+       정의표 열: 상태 | 뜻(한 줄) | 어떻게 가리나 | 무엇을 하면 닫히나 | 건수
+         충돌   두 문서가 같은 것을 **다르게** 적었다 — 양쪽에 값이 있다 → 사람이 하나를 고른다
+         중복   두 문서가 같은 것을 **각자 자기 것**이라고 적었다     → 소유를 한쪽으로 정한다
+         갭     아무도 적지 않았다                                  → 정의를 새로 쓴다
+         정리됨 어느 쪽이 맡는지 문서에 **적혀 있다**                → 확인만 한다
+       갭은 안에서 둘로 갈린다 — 같은 표의 하위 행으로 둔다.
+         고아      수단을 주는 쪽과 그것을 필요로 하는 쪽이 **서로를 가리키지 않는다**
+                   → contracts.json 의 gap_kind: orphan
+         규격 미정 이름은 정해졌고 **필드·값·규칙이 없다**
+                   → contracts.json 의 gap_kind: spec
+       이 둘의 수는 정본(gap_kind)에서 옮긴다 — 본문에만 두면 기계가 대조할 대상이 없다.
+       그 다음이 상태 4분류 카드(.cards c4)와 전량 표다. 모든 Contract 가 어느 칸에 들어간다.
        표 열: ID | 대상 | 참여 | 강도 | 무엇이 없다·부딪힌다 — 상태 넷 모두 같은 형식.
-       참여 열을 빼지 않고 단위를 상태마다 바꾸지 않는다(contract-sweep.md 참조). -->
+       참여 열을 빼지 않고 단위를 상태마다 바꾸지 않는다(contract-sweep.md 참조).
+       [수치 규약] 수를 말하는 자리에서는 **라벨과 수를 붙여 쓴다** — `갭 21건`.
+       `갭(아무도 안 적었다) 21건` 처럼 라벨 뒤에 괄호 설명을 끼우면 `check_numbers.py` 의
+       수치 대조가 그 자리를 **건너뛴다**(실측 확인). 설명은 정의표의 뜻 칸에만 둔다.
+       ★ **전량 표의 행마다 `id="C37"` 을 준다** — 아래 색인이 그 자리로 보낸다. 카드가 아니라
+       **전량 표에 주는 이유**는 모든 Contract 가 여기 있고 카드는 일부만 있기 때문이다
+       (id 는 문서에서 유일해야 하므로 한 자리에만 준다). -->
+
+  <!-- ★ Contract 색인. **ID 참조에 도달점을 주는 유일한 자리다.**
+       실사용 판에서 고유 Contract 40개가 본문에서 **556회** 참조됐고(`C11` 하나가 30회)
+       표지부터 「C16 · C31 · C37」로 ID 를 던지는데, 카드에 id 가 없고 색인도 없어서
+       독자가 `Ctrl+F` 밖에 쓸 수 없었다. `iteration-9` 산출물에는 이 색인이 있었고
+       그 뒤 자리를 잃었다(스타일만 남았다) — **지우지 않는다.**
+       · ID 전량을 칩 하나씩. 칩은 앵커 요소이고 **class 가 상태**(`.con` 충돌 · `.dup` 중복 ·
+         `.gap` 갭 · `.ok` 정리됨 — 정본에서 옮긴다), **링크 대상은 그 Contract 의 전량 표
+         행 id**(`C37` 형태)다.
+       · **이 주석에 태그를 적지 않는다** — `check_html.py` 의 태그 균형·깨진 앵커 검사는
+         HTML 주석을 **제외하지 않아** 골격 자체가 실패한다(실측: 여기 앵커 예시를 한 줄
+         넣었더니 어긋남 9건). 예시가 필요하면 클래스명과 속성 이름만 백틱으로 적는다.
+       · 정렬은 **번호 순**이다. 상태로 묶으면 ID 로 찾는 사람이 훑어야 한다
+       · 목차에 `.sub` 로 한 줄 걸린다(`#cidx`)
+       · **본문의 ID 참조는 감싸지 않는다** — 556회를 링크로 만들면 소음이 되고, 색인
+         하나로 도달이 성립한다. 상호참조(`.xr`)와 다른 판단이고 그 이유는 횟수다. -->
+  <div class="chips" id="cidx">
+  </div>
 </section>
 
 <section id="s32">
-  <h2><span class="sn">02</span>충돌 — 사람이 결정한다</h2>
-  <!-- 충돌 표면마다 .surface con 카드 — 참여·결합 강도·충돌 내용·확정 대상 -->
+  <h2><span class="sn">02</span>사람이 결정할 것</h2>
+  <!-- 충돌 Contract 마다 .surface con 카드 — 참여·결합 강도·충돌 내용·확정 대상 -->
 </section>
 
 <section id="s33">
-  <h2><span class="sn">03</span>고아 — 소유자가 없다</h2>
-  <!-- 고아 카드(.cards c2). 수단 제공자와 요건 보유자가 서로를 참조하지 않는 것 -->
+  <h2><span class="sn">03</span>소유자가 없는 것</h2>
+  <!-- 먼저 한 문단으로 **왜 갭에서 이것만 따로 보는가**를 적는다. 독자가 §1 의 갭과
+       구분하지 못하면 이 절이 중복으로 읽힌다.
+         · 갭은 "아무도 적지 않았다" 이고, 고아는 **양쪽이 다 적었는데 사이가 비어 있다** 다.
+           수단을 주는 쪽과 그것을 필요로 하는 쪽이 각자 자기 문서에서는 말이 되지만
+           서로를 가리키지 않는다 — 그래서 아무도 자기 일이라고 생각하지 않는다.
+         · 위험한 이유를 한 줄로 — **두 번 만들거나 아무도 만들지 않는다.** 양쪽 다
+           "내 쪽은 끝났다" 고 보고할 수 있다(contract-sweep.md "고아 판별").
+       그 다음이 고아 카드(.cards c2). 카드마다 수단 제공자 · 요건 보유자 · 비어 있는 사이. -->
 </section>
 
 <section id="s34">
-  <h2><span class="sn">04</span>소스 없이 닫히지 않는 것</h2>
-  <!-- 종이 / 실물 표 + 사전 준비 순환이 있으면 .flow 도해.
-       열: ID | 대상 | 참여 | 회신 대기·실물 대기·종이로 닫힌다 | 어디서 닫히는가 | 근거.
-       마지막 열은 AI-DLC 단계 — ideation(합의) / inception(설계) / 사전 준비(회신·실물).
-       미결 전량에 하나씩 배정한다. 문서의 미확정·가정 목록은 전량이 이 표에 들어온다.
-       자세한 기준은 SKILL.md 5단계. -->
+  <h2><span class="sn">04</span>문서가 스스로 든 미확정</h2>
+  <!-- ★ 문서가 자기 미확정·가정을 목록으로 갖고 있으면 **그 목록 전체가 판정 대상**이다.
+       제약 문서의 "미확정 사항"·"가정" 절, brief 의 확인 질문, 계획서의 "TBD" 표가 그렇다.
+       **표본으로 고르지 않는다** — 두 산출물이 이 자리에서 같은 모양으로 감점됐다.
+       표 열: 원문 항목(인용) | 판정 | 근거 | Contract.
+       판정은 셋이다 — 받아올 것 없음 / 회신 필요 / 실물 필요. 축 정의는 이 파트 §1 의 세 축 지도에
+       있고 **개수 카드와 사전 준비 표는 파트 4 §2** 다(여기서 다시 그리지 않는다).
+       ★ **Contract 열은 「그 원문 항목이 올라간 Contract」다** — 관련 Contract 를 적는 열이
+       아니다. 그러므로 **판정은 그 Contract 의 `closes` 정본과 같게 쓴다.** 행에 여럿이면
+       **가장 늦게 닫히는 것**(실물 필요 > 회신 필요 > 받아올 것 없음)을 쓴다 — 사전 준비
+       분량이 기간 판정의 입력이므로 보수적인 쪽으로 모은다. 라벨이 옳게 느껴지면 정본
+       `closes` 가 틀린 것이니 **그쪽을 고치고** 그 수를 쓰는 자리를 함께 고친다.
+       표에서만 갈라 적으면 파트 4 §2 의 개수와 어긋난다 — 실측에서 한 산출물이 아홉 행을
+       정본에 맞추고 세 행을 원문 항목 기준으로 적어 파생 수치 결함이 됐다.
+       `check_numbers.py` 가 이 열을 행마다 대조한다.
+       문서 제목의 "(Draft)"·"(초안)" 자체도 한 줄이다 — 내용을 인용하기 전에 확정 여부를 묻는다.
+       원문이 "예:" 로 든 값은 **선언이 아니다.** 두 예시가 서로 다른 값이면 그것은 충돌이
+       아니라 **선언이 없는 자리**이고, 그 판정 이유를 .note 로 적는다. -->
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════
-     파트 4 · The {{SCOPE-EN}} scope
+     파트 4. Where it closes — 미결이 어디서 닫히는가
+     ─ 이 파트가 문서의 목적을 만든다. 받는 사람이 "미리 해결해 와야 하는 것" 과
+       "AI-DLC 안에서 해결할 것" 을 가르는 자리다. 축은 「어디서 닫히는가」(`aidlc`)이고,
+       파트 3 §4 의 「무엇을 받아 와야 닫히는가」(`closes`)와 겹치지만 같지 않다.
      ══════════════════════════════════════════════════════════════════ -->
 <div class="part" id="p4">
-  <div class="pn">파트 4 · The {{SCOPE-EN}} scope</div>
-  <h2>{{기간}}에 들어오는 범위</h2>
-  <p class="pr">{{한 문단 요약 — 이 파트가 무엇을 보여주는가}}</p>
+  <div class="pn">파트 4. Where it closes</div>
+  <h2>미결이 어디서 닫히는가</h2>
+  <p class="pr">{{한 문단 요약 — 착수 전에 받아 와야 하는 것 N건 · AI-DLC 안에서 닫는 것 M건.
+     이월되면 어디로 가는지까지}}</p>
 </div>
 
 <section id="s41">
-  <h2><span class="sn">01</span>역산</h2>
-  <!-- 주어진 것 표(기간·인원·마감 구간·동시 상한·층 수) + 역산 문단 + .flow 구간 도해 -->
+  <h2><span class="sn">01</span>전량 배정</h2>
+  <!-- 표 열: 배정 | 개수 | 뜻 | Contract(ID 전량을 .m 으로). 네 행이고 합이 총계와 같다.
+         사전 준비    — 워크숍 전에 답이나 실물이 와야 한다        (AI-DLC 밖)
+         ideation    — 범위·우선순위를 사람이 합의하면 닫힌다     (AI-DLC 안)
+         inception   — 계약·스키마·인터페이스를 설계하면 닫힌다   (AI-DLC 안)
+         construction — 이월된 끝에 코드를 쓰면서 닫는다          (경고: §3 을 함께 본다)
+       수는 `contracts.json` 의 `aidlc` 에서 옮긴다. 배정 기준은 SKILL.md 5단계.
+       이어서 두 가지를 붙인다 —
+       ① 축 겹침 각주(작은 글씨): 받아올 것 판정과 축이 겹치지만 같지 않다.
+          받아올 것이 없는 것도 ideation(합의)과 inception(설계)로 갈린다 — 예를 하나 든다.
+       [카드 라벨 규약] 카드의 .cm 에 "C59 · C60 · 사전 준비 · 회신 필요" 처럼 ID 와 축 라벨을
+       함께 적을 때 그 ID 전부가 그 라벨의 칸이어야 한다 — check_numbers.py 가 대조한다.
+       ② .note: 성격은 설계인데 사전 준비로 옮긴 항목의 근거. 배정은 "그 일의 성격"이
+          아니라 "닫히기 위한 선행 조건"으로 정한다. 해당 항목이 없으면 이 상자는 뺀다. -->
 </section>
 
 <section id="s42">
-  <h2><span class="sn">02</span>들어오는 것과 들어오지 않는 것</h2>
-  <!-- 구간별 들어오는 것 / 들어오지 않는 것 표 + 마지막 날 산출물 + 판정 항목 카드.
-       마지막 날 손에 남는 것을 산출물 이름으로 적는다(계약 문서·스키마·스캐폴드 등) —
-       받아서 쓸 수 있는 형태로. 층·표면·동시 상한만 세고 공수는 만들지 않는다. -->
+  <h2><span class="sn">02</span>착수 전에 받아 와야 하는 것</h2>
+  <!-- ★ **이 절은 두 축을 겸한다 — 그 사실을 절 머리 첫 문장에 적는다.**
+       제목(「착수 전에 받아 와야 하는 것」)은 ③축(`aidlc == prep`)의 이름인데, 담는 것은
+       ②축(`closes`) **전량**이기도 하다. 목차 제목만으로는 ②축을 찾을 수 없으므로 목차에
+       `.sub`(「받아올 것 판정 전량」)이 한 줄 걸려 있고, 본문에서는 첫 문장이
+       *"이 절이 「무엇을 받아 와야 하는가」 축 전부를 담는다"* 로 밝힌다. 파트 3 세 축 지도가
+       이 절을 `.xr` 로 가리킨다 — 세 자리가 같은 절을 지목해야 도달이 성립한다.
+       ★ 이 절이 「받아올 것」 축 전부를 담는다. **표를 하나만 만든다.**
+       옛 골격은 이것을 두 절로 나눴다(파트 1 의 「확보해야 하는 소스」 + 여기의 「사전 준비」)
+       — 실측 it.15 에서 두 표가 **같은 7건을 두 번** 그렸고, 같은 사실을 두 자리에서 유지해야
+       하는 자리가 됐다. 합친다.
+       표 열: Contract | 무엇이 와야 하는가 | 누가 주는가 | 없으면 무엇이 막히는가 | 읽기/쓰기
+       [경고] 목록 머리에 못 박는다 — "이 N건은 AI-DLC 착수 후에는 닫힐 수 없다.
+         실물·표본·외부 회신은 워크숍 안에서 생기지 않는다."
+       담는 것은 `aidlc == prep` 전량이고 **실물 필요(`closes == artifact`)는 전량 여기 있어야
+       한다**(SKILL.md 5단계 정합). 회신 필요 중 결정권자가 구간에 있는 것은 여기가 아니다.
+       그리고 「받아올 것」 세 묶음(받아올 것 없음 · 회신 필요 · 실물 필요)의 개수 카드를
+       이 절 머리에 둔다 — 축이 파트 3 의 상태 축과 다르다는 것을 여기서 밝힌다.
+       **쓰기 대상이 있으면 그것만 따로 표시한다** — 확보의 난이도가 권한으로 바뀐다.
+       Day-1 에 무엇을 들고 들어오는가가 이 표에서 그대로 나온다 — 파트 6 이 그것을 받는다. -->
 </section>
 
 <section id="s43">
+  <h2><span class="sn">03</span>이월되면 어디로</h2>
+  <!-- construction 으로 내려간 Contract 와 되돌림 위험(경고 상자). 없으면 "없다" 고 적고 절을 남긴다 —
+       이 절의 값은 목록이 아니라 경고다.
+       판정 기준(SKILL.md 5단계): 앞 단계가 이름만 정하고 필드·규칙을 정하지 않으면
+       그 Contract 는 construction 으로 내려간다. 이름이 있다고 정리됨이 아니다.
+       실측 근거를 한 문단으로 적는다(고객·프로젝트를 특정하지 않는다) —
+         · 미답 결정이 단계 끝으로 갈수록 쌓였다: ideation 0 · inception 1 · construction 6
+         · 앞 단계가 데이터 묶음의 이름만 붙이고 필드를 정하지 않아 설계 단계가 그것을
+           정했고, 그 선택지 하나에 "이 선택은 이미 확정한 요건을 바꾼다" 가 붙어 있었다
+       → 그래서 이월의 비용은 "늦게 정한다" 가 아니라 "정하는 순간 앞에서 닫은 것이
+         다시 열린다" 다. 파트 5 §3(줄이지 말아야 할 것)과 이어 둔다. -->
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     파트 5. Reach — 그래서 어디까지 들어오는가
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="part" id="p5">
+  <div class="pn">파트 5. Reach</div>
+  <h2>그래서 어디까지 들어오는가</h2>
+  <p class="pr">{{한 문단 요약 — 이 파트가 무엇을 보여주는가}}</p>
+</div>
+
+<section id="s51">
+  <h2><span class="sn">01</span>구간 수와 역산</h2>
+  <!-- 기간을 고객이 주지 않았으면 이 절을 「권장 구간 수」로 연다 — 구간 수는 센 값에서
+       나오고(ideation·inception 을 동시 상한으로 나눈 것 + 판정 구간 1), 한 구간을 며칠로
+       잡는지는 고객의 선택이라고 적는다. 공수(인일·인월)는 만들지 않는다. SKILL.md 6단계.
+       주어진 것 표(기간·인원·마감 구간·동시 상한·Layer 수) + 역산 문단 + .flow 구간 도해.
+       "주어진 것" 표에 「사전 준비로 앞당길 수 없는 것」 행을 둔다 — 실물 필요 수와
+       그중 최하 Layer 에 있는 수. 그 값이 파트 4 §2 에서 온다.
+       구간 표 열: 구간 | AI-DLC 단계 | Work 내용 | 새로 닫는 Contract | 확인·승계.
+       2열은 파트 4 §1 의 배정을 받는다 — 하루가 두 단계를 겸하면 둘을 다 적고 그
+       구간의 단계별 개수를 함께 적는다("Layer 1 의 ideation 6 · inception 5").
+       사전 준비 구간은 "닫는다"가 아니라 확보 계획까지다 — 새로 닫는 Contract 열을 비운다.
+       배정 전량이 구간에 자리를 갖는지 대조한다(SKILL.md 6단계). -->
+  <!-- 구간과 단계가 1:1 이 아니면 .note 로 그렇게 적는다 — "첫날은 ideation 인가,
+       절반만 그렇다" 형태로 개수를 갈라 보이고, Layer 밖에 있는 배정이 어느 구간으로
+       가는지 이름으로 적는다. 그 항목들이 갈 곳을 잃는 것이 이 자리의 실패다. -->
+</section>
+
+<section id="s52">
+  <h2><span class="sn">02</span>들어오는 것 · 들어오지 않는 것</h2>
+  <!-- 구간별 들어오는 것 / 들어오지 않는 것 표 + 마지막 날 산출물 + 판정 항목 카드.
+       마지막 날 손에 남는 것을 산출물 이름으로 적는다(계약 문서·스키마·스캐폴드 등) —
+       받아서 쓸 수 있는 형태로. Layer·Contract·동시 상한만 세고 공수는 만들지 않는다.
+       산출물 표에 「문서」 행을 둔다 — 미결 대장(상태 · Layer · AI-DLC 단계 배정 · 근거 원문).
+       사전 준비로 배정된 것은 「계획」 행이다 — 담당과 기한이 붙은 확보 계획. -->
+</section>
+
+<section id="s53">
   <h2><span class="sn">03</span>줄이지 말아야 할 것</h2>
   <!-- 양보하면 재작업이 되는 것 카드(.cards c2) -->
 </section>
 
-<section id="s44">
-  <h2><span class="sn">04</span>배치와 완성의 정의</h2>
-  <!-- 배치 권고 표 + "지금은 완성을 판정할 수 없다" 절 -->
-</section>
-
-<section id="s45">
-  <h2><span class="sn">05</span>확인이 필요한 것</h2>
+<section id="s54">
+  <h2><span class="sn">04</span>확인이 필요한 것</h2>
   <!-- 확인 요청 카드. 답에 따라 일정이 달라지는 것만 올린다 -->
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════
-     부록 · How to start
+     파트 6. Start — 무엇을 치고 시작하는가
+     ─ 부록이 아니라 파트다. 결론의 마지막 한 걸음이고 파트 3·4 의 표를 받는다.
      ══════════════════════════════════════════════════════════════════ -->
-<div class="part" id="pa">
-  <div class="pn">부록 · How to start</div>
-  <h2>착수 전에 필요한 것 둘</h2>
-  <p class="pr">{{한 문단 요약 — 이 파트가 무엇을 보여주는가}}</p>
+<div class="part" id="p6">
+  <div class="pn">파트 6. Start</div>
+  <h2>무엇을 치고 시작하는가</h2>
+  <p class="pr">{{한 문단 요약 — 첫 세션의 착수 문장 하나와 그것이 만드는 것}}</p>
 </div>
 
-<section id="sa1">
-  <h2><span class="sn">A</span>착수 문장 — 무엇을 치고 시작하는가</h2>
-  <!-- 착수 문장 상자 + 넣을 것/넣지 말 것 표 + 용어 단서 -->
-</section>
-
-<section id="sa2">
-  <h2><span class="sn">B</span>문서를 어디에 두는가</h2>
-  <!-- 폴더 트리 도해 + 위치별 무엇을 담는가 표 + 사고 카드 + 체크리스트 + 위임 가이드
-       프로젝트 구조·저장소가 주어지지 않았으면 이 절을 지운다(목차의 항목도 함께).
-       실제 구조 없이 쓰면 가상의 배치를 권고하는 글이 된다 -->
+<section id="s61">
+  <h2><span class="sn">01</span>착수 문장</h2>
+  <!-- 착수 문장 상자(blockquote) + 그 문장이 만드는 것 표 + 넣지 말 것 · 먼저 고정할 낱말.
+       착수 문장은 **한 문장**이고 파트 3·4 의 수를 그대로 받는다 — 새 수를 만들지 않는다.
+       표 열: 무엇을 만드는가 | 어디서 오는가(그 표의 절 번호).
+       .note 에 둘을 적는다 — 이 세션에서 하지 말 것(구조가 안 정해진 상태에서 그리는 것)과
+       **먼저 고정해야 하는 낱말 넷**. 낱말이 흔들리면 뒤의 모든 문장이 흔들린다.
+       저장소·프로젝트 구조가 주어졌으면 문서 배치를 이 절 끝에 한 문단으로 덧붙인다 —
+       주어지지 않았으면 적지 않는다(권고만 적으면 가상의 배치가 된다). -->
 </section>
 
 </main>
 
 <script>
 /* 목차 스크롤 스파이. 현재 읽는 절을 좌측에서 표시한다.
-   .tgrp(파트 라벨)은 클릭 이동만 하고 활성 표시 대상에서는 빠진다 — 파트와 절이
-   동시에 활성으로 보이면 지금 어디인지가 오히려 흐려진다. */
-const links = [...document.querySelectorAll("#toc a:not(.tgrp):not(.brand)")];
+   .tgrp(파트 라벨)은 절과 **다른 강도**로 표시한다 — 절은 `.on`(배경 + 왼쪽 선),
+   파트는 `.onp`(색만). 같은 강도로 켜면 지금 어디인지가 오히려 흐려지고, 아예 켜지
+   않으면 긴 문서에서 "몇 번째 파트인가" 를 목차가 말하지 않는다.
+   `.sub` 는 절이 아니라 그 절 안의 이름이므로 스파이 대상에서 뺀다 — 켜지면 절과
+   서브가 동시에 활성으로 보인다. */
+const links = [...document.querySelectorAll("#toc a:not(.tgrp):not(.brand):not(.sub)")];
 const secs  = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const tgrps = [...document.querySelectorAll("#toc a.tgrp")];
 
 function spy(){
   const y = scrollY + 120;
   let cur = 0;
   secs.forEach((s, n) => { if (s.offsetTop <= y) cur = n; });
   links.forEach((a, n) => a.classList.toggle('on', n === cur));
+  /* 활성 절이 속한 파트 = 그 절보다 앞에 있는 마지막 .tgrp */
+  const at = links[cur];
+  let own = null;
+  tgrps.forEach(g => {
+    if (at && g.compareDocumentPosition(at) & Node.DOCUMENT_POSITION_FOLLOWING) own = g;
+  });
+  tgrps.forEach(g => g.classList.toggle('onp', g === own));
 }
 addEventListener('scroll', spy, {passive:true});
 addEventListener('resize', spy);

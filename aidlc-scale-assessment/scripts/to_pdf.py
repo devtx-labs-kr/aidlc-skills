@@ -18,6 +18,7 @@ pdfinfo·pdffonts·pdftotext(poppler)가 있으면 함께 점검한다. 없으�
 하고 그 사실을 알린다 — 렌더 자체는 Chrome 만 있으면 된다.
 """
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -51,6 +52,38 @@ def run(cmd: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
+def page_families(pdf: str, page: int) -> set:
+    lines = run(["pdffonts", "-f", str(page), "-l", str(page), pdf]).stdout.splitlines()[2:]
+    return {l.split()[0].split("+")[-1] for l in lines if l.strip()}
+
+
+def page_chars(pdf: str, page: int) -> set:
+    txt = run(["pdftotext", "-f", str(page), "-l", str(page), pdf, "-"]).stdout
+    return {c for c in txt
+            if ord(c) >= 0x80 and not ("가" <= c <= "힣") and not c.isspace()}
+
+
+def offending_glyphs(pdf: str, pages: int, bad_families: set) -> tuple[set, int, int]:
+    """예상 밖 폰트를 쓴 **페이지**를 찾고, 그 페이지에만 있는 글자를 골라낸다.
+
+    `pdffonts` 는 어느 글자가 대체됐는지 말해 주지 않는다. 그래서 페이지 단위로 좁힌 뒤
+    **깨끗한 페이지의 글자 집합을 빼서** 후보를 만든다. 완전하지는 않지만(같은 페이지에
+    처음 나온 글자가 둘이면 둘 다 후보다) **이름을 대는 것**이 목적이다 —
+    `check_html.py` 의 목록에 없는 글자는 그 검사가 통과시키고, 그러면 아무도 찾지 못한다.
+    네 판(∪·└·ⓐ·▾)에서 그 일이 반복됐다.
+    """
+    bad_pages, good_pages = [], []
+    for p in range(1, pages + 1):
+        fams = page_families(pdf, p)
+        (bad_pages if fams & bad_families else good_pages).append(p)
+    bad_chars, good_chars = set(), set()
+    for p in bad_pages:
+        bad_chars |= page_chars(pdf, p)
+    for p in good_pages:
+        good_chars |= page_chars(pdf, p)
+    return bad_chars - good_chars, len(bad_pages), len(good_pages)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("html")
@@ -81,10 +114,12 @@ def main() -> int:
 
     failed = False
 
+    page_count = 0
     if shutil.which("pdfinfo"):
         info = run(["pdfinfo", out]).stdout
         pages = next((l.split()[-1] for l in info.splitlines()
                       if l.startswith("Pages:")), "?")
+        page_count = int(pages) if pages.isdigit() else 0
         size = next((l.split(":", 1)[1].strip() for l in info.splitlines()
                      if l.startswith("Page size:")), "?")
         print(f"  페이지 {pages} · {size}")
@@ -99,7 +134,30 @@ def main() -> int:
         if unexpected:
             failed = True
             print(f"  ✗ 예상 밖 폰트: {', '.join(unexpected)}")
-            print("     → 그 폰트에 없는 글자가 문서에 있다. check_html.py 로 찾는다")
+            # **이 자리에서 글자를 이름으로 댄다.** 옛 문구는 *"check_html.py 로 찾는다"*
+            # 였는데, 그 검사는 **목록에 있는 글자만** 보므로 새 글자는 통과시킨다 —
+            # 네 판(`∪` it.10 · `└` it.15 · `ⓐ` it.16 · `▾` it.19)에서 그 일이 났다.
+            named = set()
+            if page_count and shutil.which("pdftotext"):
+                named, nb, ng = offending_glyphs(out, page_count, set(unexpected))
+                print(f"     · 그 폰트를 쓴 페이지 {nb} / 깨끗한 페이지 {ng}")
+            if named:
+                codes = " ".join(f"{c}(U+{ord(c):04X})" for c in sorted(named))
+                print(f"     ✗ **이탈 후보 글자: {codes}**")
+                print("     → 이 글자를 본문에서 바꾸고, `check_html.py` 의"
+                      " `MISSING_GLYPHS` 에 **자리째 올린다**(다음 판이 같은 글자에"
+                      " 다시 뚫리지 않게 한다)")
+                # 옆에 적어 둔다 — `check_html.py --glyph-report` 가 이것을 받아쓴다.
+                side = os.path.splitext(out)[0] + ".glyph-misses.json"
+                with open(side, "w", encoding="utf-8") as fh:
+                    json.dump({"fonts": unexpected, "glyphs": sorted(named)},
+                              fh, ensure_ascii=False, indent=1)
+                print(f"     · 받아쓸 파일: {side}"
+                      " → `python3 check_html.py <html> --glyph-report <이 파일>`")
+            else:
+                print("     ⚠ **글자를 특정하지 못했다** — 페이지 단위 차집합이 비었다"
+                      "(모든 페이지가 그 폰트를 쓰거나 poppler 가 없다)."
+                      " 후보를 손으로 좁힌다: 비-ASCII·비-한글 글자를 하나씩 빼며 재렌더한다")
         else:
             print(f"  ✓ 폰트 {len(families)}종, 전부 예상 계열")
     else:

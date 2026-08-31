@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""표면 목록에서 수치를 계산한다. 손으로 세지 않는다.
+"""Contract 목록에서 수치를 계산한다. 손으로 세지 않는다.
 
 문서의 요약 수치는 사람이 손으로 적은 값이라 **틀린 채로 여러 문서에 퍼진다.** 실제로
-한 갈래의 관여 수가 9로 적혀 있었지만 실제 11이었고, "두 갈래 공유 15개" 가 실제 14였다.
-표면별 참여자 목록이 정본이고 나머지 수치는 전부 여기서 파생돼야 한다.
+한 Workstream 의 관여 수가 9로 적혀 있었지만 실제 11이었고, "두 Workstream 공유 15개" 가 실제 14였다.
+Contract 별 참여자 목록이 정본이고 나머지 수치는 전부 여기서 파생돼야 한다.
 
-입력: 표면 목록 JSON
+입력: Contract 목록 JSON
 
     [
       {"id": "C1", "title": "요청 진입 경계", "parties": ["004", "003"],
@@ -16,14 +16,14 @@
 
   status 는 con(충돌) / dup(중복) / gap(갭) / ok(정리됨) 넷 중 하나.
   policy 에 정책 문서 이름을 주면 참여자에서 제외하고 센다 — 정책 문서는 경계를
-  주장하지 않으므로 갈래 수치에 넣으면 부풀려진다.
+  주장하지 않으므로 Workstream 수치에 넣으면 부풀려진다.
 
 사용법:
-    python3 surface_matrix.py surfaces.json
-    python3 surface_matrix.py surfaces.json --policy 000 000-attach
-    python3 surface_matrix.py surfaces.json --group 004,003 --group 001 --group 002
+    python3 contract_matrix.py contracts.json
+    python3 contract_matrix.py contracts.json --policy 000 000-attach
+    python3 contract_matrix.py contracts.json --group 004,003 --group 001 --group 002
 
-  --group 을 주면 그 묶음 배치에서 **경계를 넘는 표면 수**를 센다. 배치 대안 표
+  --group 을 주면 그 묶음 배치에서 **경계를 넘는 Contract 수**를 센다. 배치 대안 표
   (파트 2 "배치를 바꿔도 남는 것")의 수치가 이것이다.
 
 출력은 붙여 쓸 수 있는 마크다운 표다.
@@ -55,6 +55,16 @@ EXCLUDE_QUOTE = re.compile(
     r"제외|미포함|범위\s*밖|범위에서\s*빠|구현하지\s*않|"
     r"won'?t|out\s*of\s*scope|not\s*in\s*scope|non-?goal", re.I)
 
+# 근거가 입력 문서가 아니라 **이 산출물 자신**을 가리키는 것(it.17 신설).
+# 실측 과녁 — it.15 `plandetail` C77 의 cites[2] 가 "이 문서 파트 4 §1" 이고, 그러면서
+# 강도 최상 · Layer 1 · 충돌로 세어져 표지 판정이 쓰는 집계에 들어갔다. 채점자가
+# **거짓 양성**으로 판정한 자리다. 계약 지점은 두 입력 문서가 합의해야 하는 자리이므로
+# 산출물 자신은 경합의 당사자가 될 수 없다.
+# 채택 검증: 그 파일에서 C77 1건 · it.13~it.16 산출물 다섯에서 0건(오탐 없음).
+SELF_CITE = re.compile(
+    r"이\s*문서\s*(의\s*)?(파트|부록|§|절)|본\s*문서\s*(의\s*)?(파트|부록|§|절)|"
+    r"이\s*산출물|이\s*평가\s*문서|assessment\.html")
+
 RISK_TITLE = re.compile(
     r"전역|공통|의존|제약|정책|테스트|검증|상태|세션|인증|권한|보안|성능|계약|규칙|"
     r"제외|범위|전환|마이그레이션|호환|플러그인|미확정|확인\s*필요|미정|갭|이력|"
@@ -64,8 +74,8 @@ RISK_TITLE = re.compile(
 def section_coverage(surfaces, roots, doc_aliases=()):
     """입력 문서의 절 목록과 cites 를 대조해 **인용되지 않은 절**을 찾는다.
 
-    `--docs` 는 문서 단위라 문서가 표면을 몇 개 냈으면 경고가 뜨지 않는다. 그런데 절이
-    아홉인 문서가 표면 넷을 내고도 두 절을 통째로 놓친 적이 있다(전역 등록 패턴 · 테스트
+    `--docs` 는 문서 단위라 문서가 Contract 를 몇 개 냈으면 경고가 뜨지 않는다. 그런데 절이
+    아홉인 문서가 Contract 넷을 내고도 두 절을 통째로 놓친 적이 있다(전역 등록 패턴 · 테스트
     부재). 문서 단위로는 보이지 않는 누락이다.
     """
     hay = " ".join(str(c) for s in surfaces for c in s.get("cites", []))
@@ -145,12 +155,16 @@ def main() -> int:
                     help="입력 문서 경로. 문서가 번호를 붙인 식별자 계열을 세어 "
                          "**대부분 인용했는데 소수만 빠진** 원소를 낸다(놓친 발견 축)")
     ap.add_argument("--docs", nargs="*", default=[],
-                    help="입력 문서의 짧은 이름 전부. 표면을 거의 못 낸 문서를 찾는다. "
+                    help="입력 문서의 짧은 이름 전부. Contract 를 거의 못 낸 문서를 찾는다. "
                          "cites 에서 부르는 이름이 여러 가지면 "
                          "'05|RE05|RE §5' 처럼 | 로 별칭을 묶는다")
     args = ap.parse_args()
 
     surfaces = json.load(open(args.surfaces, encoding="utf-8"))
+    # it.19: 정본이 객체 형태(`{"contracts": [...], "counts": [...]}`)면 배열을 꺼낸다.
+    # 옛 배열 형태도 그대로 받는다 — 과거 판 산출물이 그 형태다(한쪽만 받으면 회귀가 죽는다).
+    if isinstance(surfaces, dict):
+        surfaces = surfaces.get("contracts", [])
     policy = set(args.policy)
 
     # 참여자에서 정책 문서를 뺀 목록. 이 값이 모든 수치의 기준이 된다.
@@ -158,12 +172,12 @@ def main() -> int:
         s["_parties"] = sorted(set(s.get("parties", [])) - policy)
 
     total = len(surfaces)
-    print(f"# 표면 {total}개\n")
+    print(f"# Contract {total}개\n")
 
     # ── 상태 분포 ──────────────────────────────────────────────────────────
     tally = Counter(s.get("status", "?") for s in surfaces)
     print("## 상태 분포\n")
-    print("| 상태 | 개수 | 표면 |")
+    print("| 상태 | 개수 | Contract |")
     print("|---|---|---|")
     for key in ("con", "dup", "gap", "ok"):
         ids = [s["id"] for s in surfaces if s.get("status") == key]
@@ -175,12 +189,35 @@ def main() -> int:
     print(f"\n합 {checksum} / 전체 {total}"
           + ("" if checksum == total else "  ← **어긋난다. 미분류를 채운다**"))
 
-    # ── 갈래별 관여 ────────────────────────────────────────────────────────
+    # 갭의 하위 분류. 본문이 「고아 N · 규격 미정 M」을 인용하므로 여기서 세어 준다 —
+    # 실측(it.15)에서 그 수를 본문에만 두어 기계가 대조할 대상이 없었고 논리 모순이 났다.
+    gaps = [s for s in surfaces if s.get("status") == "gap"]
+    if gaps:
+        kinds = Counter(str(s.get("gap_kind") or "").strip() for s in gaps)
+        blank = kinds.pop("", 0)
+        print("\n### 갭의 하위 분류\n")
+        if kinds:
+            print("| 하위 | 개수 | Contract |")
+            print("|---|---|---|")
+            for k, label in (("orphan", "고아"), ("spec", "규격 미정")):
+                ids = [s["id"] for s in gaps if str(s.get("gap_kind") or "").strip() == k]
+                if ids:
+                    print(f"| {label} | {len(ids)} | {', '.join(ids)} |")
+            other = sorted(set(kinds) - {"orphan", "spec"})
+            for k in other:
+                ids = [s["id"] for s in gaps if str(s.get("gap_kind") or "").strip() == k]
+                print(f"| **모르는 값 `{k}`** | {len(ids)} | {', '.join(ids)} |")
+        if blank:
+            print(f"\n**`gap_kind` 가 빈 갭 {blank}건** — 갭은 안에서 둘로 갈린다"
+                  " (`orphan` 소유자를 배정하면 닫힌다 / `spec` 필드·값·규칙을 써야 닫힌다)."
+                  " 본문이 그 수를 인용하므로 **정본에 적어야 대조된다**(SKILL.md 2단계).")
+
+    # ── Workstream 별 관여 ────────────────────────────────────────────────────────
     involve = Counter()
     for s in surfaces:
         involve.update(s["_parties"])
-    print("\n## 갈래별 관여\n")
-    print("| 갈래 | 관여 | 비율 | 막대 width |")
+    print("\n## Workstream 별 관여\n")
+    print("| Workstream | 관여 | 비율 | 막대 width |")
     print("|---|---|---|---|")
     for party, count in involve.most_common():
         pct = count / total * 100
@@ -212,13 +249,13 @@ def main() -> int:
         (ta, tb), thickest = pairs.most_common(1)[0]
         print(f"\n가장 두꺼운 경계: **{ta} ↔ {tb} — {thickest}개** "
               f"({thickest / total * 100:.0f}%)")
-        print(f"  공유 표면: {', '.join(shared[(ta, tb)])}")
+        print(f"  공유 Contract: {', '.join(shared[(ta, tb)])}")
         print("  → 이 쌍은 대체로 한 덩어리로 다뤄야 한다. 역방향 의존이 있는지 확인한다")
 
     # ── 근거 인용(cites) 검증 ──────────────────────────────────────────────
     # 채점에서 네 산출물 전부가 같은 자리에서 감점됐다 — 충돌·중복에는 참여 문서를
     # 적고 갭·정리됨에는 적지 않았다. 그리고 인용 밀도가 미결 수에 못 미쳤다.
-    # 두 실패의 뿌리가 같다: **표면마다 근거 원문이 기록되지 않는다.**
+    # 두 실패의 뿌리가 같다: **Contract 마다 근거 원문이 기록되지 않는다.**
     #   con(충돌) 은 경합하는 양쪽이 필요하므로 2개 이상,
     #   dup·gap 은 그 자리를 보이는 1개 이상.
     MIN_CITES = {"con": 2, "dup": 1, "gap": 1, "ok": 1}
@@ -236,19 +273,45 @@ def main() -> int:
     floor = sum(MIN_CITES.get(s.get("status", ""), 1) for s in surfaces)
     print("\n## 근거 인용\n")
     if missing and len(missing) == total:
-        print("표면에 `cites` 가 하나도 없다. **원문 인용을 표면마다 적는다** —"
+        print("Contract 에 `cites` 가 하나도 없다. **원문 인용을 Contract 마다 적는다** —"
               " 충돌은 경합하는 양쪽, 갭은 빠진 자리를 보이는 문장이다.")
         print("형식: `\"cites\": [\"004 §4 — '컨텍스트 주입은 WS2의 Provider'\", \"001 축1 — ...\"]`")
     else:
         print(f"인용 {total_cites}개 / 하한 {floor}개"
               + ("" if total_cites >= floor else "  ← **미달**"))
-        print("\n하한은 표면 상태에서 나온다 — 충돌 2개(양쪽) · 중복·갭·정리됨 1개.")
+        print("\n하한은 Contract 상태에서 나온다 — 충돌 2개(양쪽) · 중복·갭·정리됨 1개.")
         if missing:
-            print(f"\n**`cites` 가 빈 표면: {', '.join(missing)}** — 근거 없이 분류한 자리다")
+            print(f"\n**`cites` 가 빈 Contract: {', '.join(missing)}** — 근거 없이 분류한 자리다")
         for sid, st, got, need in thin_cites:
             print(f"- `{sid}`({STATUS_LABEL.get(st, st)}) 인용 {got}개 < {need}개 필요")
         if not missing and not thin_cites:
-            print("\n표면 전부가 상태별 하한을 넘는다.")
+            print("\nContract 전부가 상태별 하한을 넘는다.")
+
+    # ── 근거가 산출물 자신인가 (it.17 신설) ───────────────────────────────
+    # 이것은 후보가 아니라 **어긋남**이다 — 범위 제외 문장과 달리 정당한 경우가 없다.
+    self_cited = []
+    for s in surfaces:
+        for i, c in enumerate(s.get("_cites", [])):
+            # **원문 인용 구간을 뺀다.** 원문이 스스로를 *"본 문서"* 라 부르는 자리가 있고,
+            # 인용은 원문 그대로여야 한다 — 실측(it.17)에서 `C82` 의 `"… | 본 문서 §2"` 가
+            # PUB 원문의 문구인데 거짓 양성으로 걸렸다. 확정 사실 *"인용 안을 빼지 않으면
+            # 오탐 기계가 된다"* 를 이 검사에도 적용한다.
+            outside = re.sub(r'"[^"]*"', " ", str(c))
+            if SELF_CITE.search(outside):
+                self_cited.append((s["id"], i, str(c)[:110]))
+    if self_cited:
+        print("\n### ⚠ 근거가 이 산출물 자신을 가리킨다 — 어긋남\n")
+        print("| Contract | `cites` | 그 인용 |")
+        print("|---|---|---|")
+        for sid, i, cite in self_cited:
+            print(f"| `{sid}` | `[{i}]` | {cite} |")
+        print("\n**계약 지점은 두 입력 문서가 합의해야 하는 자리다.** 산출물 자신은 경합의"
+              " 당사자가 될 수 없다 — 자기가 내린 배정을 근거로 자기 충돌을 세우면 그 Contract"
+              " 가 강도·Layer·상태 집계에 들어가 **표지 판정을 부풀린다.**")
+        print("\n둘 중 하나로 고친다 —")
+        print("1. 그 경합이 **입력 문서 사이의 것**이면 그 두 문서의 문장으로 근거를 바꾼다")
+        print("2. 산출물의 배정 선택이 만든 것이면 **Contract 가 아니다** — 확인 요청으로 올리고"
+              " 대장에서 뺀다(집계가 함께 줄어드는지 확인한다)")
 
     # ── 충돌의 근거가 범위 제외 문장인가 ──────────────────────────────────
     suspect = []
@@ -261,7 +324,7 @@ def main() -> int:
                 break
     if suspect:
         print("\n### 충돌인데 근거가 범위 제외 문장이다\n")
-        print("| 표면 | 그 인용 |")
+        print("| Contract | 그 인용 |")
         print("|---|---|")
         for sid, cite in suspect:
             print(f"| `{sid}` | {cite} |")
@@ -274,7 +337,7 @@ def main() -> int:
         print("3. 제외와 무관한 별개 경합이면 **그 인용을 빼고** 경합하는 양쪽만 남긴다")
 
     # ── 입력 문서별 기여 ───────────────────────────────────────────────────
-    # 참여자 집계는 "표면에 등장한 것" 만 센다. 입력에 있는데 표면을 못 낸 문서는
+    # 참여자 집계는 "Contract 에 등장한 것" 만 센다. 입력에 있는데 Contract 를 못 낸 문서는
     # 그 표에서 아예 보이지 않아 **얕게 읽은 것이 드러나지 않는다.** 기대 목록을
     # 받아 0~1건인 문서를 경고한다 — 채점에서 이 유형으로 3건을 놓친 적이 있다.
     if args.docs:
@@ -295,8 +358,8 @@ def main() -> int:
             for name in args.docs:
                 if any(a and hit(a, hay) for a in name.split("|")):
                     contrib[name].append(s["id"])
-        print("\n## 입력 문서별 기여 표면\n")
-        print("| 문서 | 표면 | 어디에 |")
+        print("\n## 입력 문서별 기여 Contract\n")
+        print("| 문서 | Contract | 어디에 |")
         print("|---|---|---|")
         thin = []
         for name in args.docs:
@@ -306,16 +369,16 @@ def main() -> int:
             print(f"| {name} | {len(ids)}{'' if len(ids) >= 2 else '  ← **얕다**'} "
                   f"| {', '.join(ids) or '—'} |")
         if thin:
-            print(f"\n**표면을 1개 이하로 낸 문서: {', '.join(thin)}**")
+            print(f"\n**Contract 를 1개 이하로 낸 문서: {', '.join(thin)}**")
             print("차례로 가른다.")
             print("1. **`cites` 가 그 문서를 다른 이름으로 부르고 있지 않은가** — 이건 거짓"
                   " 경고다. `--docs '05|RE05|RE §5'` 처럼 별칭을 묶어 다시 돌린다")
             print("2. 정책·범례·인벤토리처럼 **경계를 주장하지 않는 문서**인가 — 그렇게 적고"
                   " 넘어가되 그 판단을 문서에 남긴다")
             print("3. 둘 다 아니면 **얕게 읽은 것이다.** 그 문서를 다시 열어 전수로 읽는다 —"
-                  " 그 문서만 아는 사실이 표면이 되지 못했을 수 있다")
+                  " 그 문서만 아는 사실이 Contract 가 되지 못했을 수 있다")
         else:
-            print("\n입력 문서 전부가 표면 2개 이상에 기여했다.")
+            print("\n입력 문서 전부가 Contract 2개 이상에 기여했다.")
 
     # ── 절 단위 대조 ───────────────────────────────────────────────────────
     if args.sections:
@@ -346,7 +409,7 @@ def main() -> int:
                       f"{len(hot) or '—'} |")
             if risky:
                 print("\n**아래 절은 인용되지 않았고 제목에 경계 신호가 있다. 열어서 읽는다.**")
-                print("비율이 아니라 제목으로 골랐다 — 모든 절이 표면을 낼 필요는 없고,"
+                print("비율이 아니라 제목으로 골랐다 — 모든 절이 Contract 를 낼 필요는 없고,"
                       " 목록·인벤토리·예시 절은 미인용이 정상이다.\n")
                 for name, hot in risky:
                     print(f"**`{name}`**")
@@ -367,7 +430,7 @@ def main() -> int:
     # ── 원소 단위 커버리지 ─────────────────────────────────────────────────
     # 실측(it.13): 놓친 발견 25건의 모양을 네 채점자가 같은 말로 보고했다 —
     # *"인용된 절 ↔ 원문 절의 차집합은 비어 있고 놓친 것은 전부 **인용된 절 안의 표 셀·불릿**"*.
-    # 한 표면이 표의 첫 행이고 다른 표면들이 같은 표의 둘째·셋째 행에서 나온 자리가 결정적이다.
+    # 한 Contract 가 표의 첫 행이고 다른 Contract 들이 같은 표의 둘째·셋째 행에서 나온 자리가 결정적이다.
     # 위 `--sections` 는 절 단위라 「미인용 절 0건」을 내고 이것을 못 본다.
     #
     # 그래서 **문서가 스스로 번호를 붙인 식별자를 계열별로 세고, 대부분 인용됐는데 소수만 빠진
@@ -413,7 +476,7 @@ def main() -> int:
         if not fam:
             print("문서에서 식별자 계열을 찾지 못했다 — **이 축을 검사하지 못했다.**"
                   " 산문·표 위주 문서에서는 꺼진다. 그때는 번호 붙은 목록(완료 기준 · Must 표 ·"
-                  " Q 목록)의 **원소마다 표면 ID 를 손으로 적어** 커버리지를 본다.")
+                  " Q 목록)의 **원소마다 Contract ID 를 손으로 적어** 커버리지를 본다.")
         elif hits:
             print("| 계열 | 전체 | 빠진 것 |")
             print("|---|---|---|")
@@ -421,7 +484,7 @@ def main() -> int:
                 print(f"| `{pre}` | {n} | {', '.join(f'`{x}`' for x in miss)} |")
             print(f"\n**후보 {sum(len(h[2]) for h in hits)}건. 결함이 아니라 판정 대상이다** —"
                   " 계열의 나머지를 다 인용하고 이것만 빼놓은 자리이므로, 하나씩 원문을 열어"
-                  " 표면이 되어야 하는지 본다. 실측에서 이 형태로 놓친 계약 지점 셋이 나왔다.")
+                  " Contract 가 되어야 하는지 본다. 실측에서 이 형태로 놓친 Contract 셋이 나왔다.")
         else:
             print(f"계열 {len(fam)}개를 셌고 「대부분 인용했는데 소수만 빠진」 계열이 없다.")
         print("\n**이 축이 보지 못하는 것** — 인용된 식별자 **안의** 하위 항목(표 셀 안의 열거"
@@ -439,7 +502,7 @@ def main() -> int:
         for s in surfaces:
             homes = {owner.get(p, f"?{p}") for p in s["_parties"]}
             (crossing if len(homes) > 1 else internal).append(s["id"])
-        print("\n## 이 배치에서 경계를 넘는 표면\n")
+        print("\n## 이 배치에서 경계를 넘는 Contract\n")
         for i, g in enumerate(groups):
             print(f"- 묶음 {i + 1}: {', '.join(sorted(g))}")
         print(f"\n**경계 통과 {len(crossing)} / {total}** · 내부화 {len(internal)}")
